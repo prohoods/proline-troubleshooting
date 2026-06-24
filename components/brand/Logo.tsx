@@ -33,7 +33,7 @@ export function Logo({
       <Flame className={`h-7 w-auto shrink-0 ${flameColor}`} />
       <span className="flex flex-col leading-none">
         <span
-          className={`text-[1.3rem] font-extrabold tracking-[0.2em] ${wordColor}`}
+          className={`text-[1.3rem] font-extrabold tracking-[0.08em] ${wordColor}`}
         >
           PROLINE
         </span>
