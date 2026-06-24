@@ -30,6 +30,8 @@ export interface RunRecord {
   answers: RunAnswer[];
   diagnoses: RunDiagnosis[];
   feedback?: RunFeedback;
+  /** Internal CS-agent notes captured at the diagnosis step. */
+  agentNotes?: string;
 }
 
 /** The one seam every persistence backend implements. */

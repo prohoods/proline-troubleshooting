@@ -8,10 +8,12 @@ import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import {
   buildSteps,
   collectAnswers,
+  collectAnswersDisplay,
   isAnswered,
   projectedTotal,
   sectionLabel,
 } from "@/lib/flow/engine";
+import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue } from "@/lib/types";
@@ -46,6 +48,27 @@ export function Troubleshooter() {
   // is unavailable, and the source of branch/path metadata for the saved record.
   const diagnosis = useMemo(
     () => (flow ? resolveDiagnoses(flow, answers) : null),
+    [flow, answers],
+  );
+
+  // Matched spec sheet (for the PDF link + summary). Manual model only on the
+  // no-order path, so it never overrides a found order's product.
+  const spec = useMemo<SpecMatch | null>(() => {
+    const manual =
+      answers["p_order_lookup"] === NO_ORDER_VALUE &&
+      typeof answers["p_hood_model"] === "string"
+        ? answers["p_hood_model"]
+        : undefined;
+    return findSpec([
+      selectedOrder?.product.title,
+      selectedOrder?.product.sku,
+      manual,
+    ]);
+  }, [selectedOrder, answers]);
+
+  // Human-readable answers (option labels, not slugs) for the copyable summary.
+  const displayAnswers = useMemo(
+    () => (flow ? collectAnswersDisplay(flow, answers) : []),
     [flow, answers],
   );
 
@@ -122,6 +145,7 @@ export function Troubleshooter() {
 
   const submitFeedback = async (
     feedback: RunFeedback,
+    agentNotes?: string,
   ): Promise<{ ok: boolean }> => {
     if (!flow || !category || !diagnosis) return { ok: false };
     const payload = {
@@ -132,6 +156,7 @@ export function Troubleshooter() {
       answers: collectAnswers(flow, answers),
       diagnoses: shownDiagnoses.map((d) => ({ id: d.id, title: d.title })),
       feedback,
+      agentNotes: agentNotes?.trim() || undefined,
     };
     try {
       const res = await fetch("/api/runs", {
@@ -213,6 +238,9 @@ export function Troubleshooter() {
             pathValue: diagnosis.pathValue,
             diagnoses: shownDiagnoses,
           }}
+          order={selectedOrder}
+          answers={displayAnswers}
+          spec={spec}
           onSubmitFeedback={submitFeedback}
           onRestart={restart}
         />

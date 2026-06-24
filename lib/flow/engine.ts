@@ -117,6 +117,41 @@ export function collectAnswers(
   return out;
 }
 
+/** Every question across the flow (productInfo, issue type, all branches/paths). */
+export function allQuestions(flow: CategoryFlow): Question[] {
+  const qs: Question[] = [...flow.productInfo, flow.issueType];
+  for (const b of flow.branches) {
+    if (b.kind === "linear") {
+      qs.push(...b.questions);
+    } else {
+      qs.push(...b.preSplit, b.split);
+      for (const p of b.paths) qs.push(...p.questions);
+    }
+  }
+  return qs;
+}
+
+/** Like collectAnswers, but single/multi option values are mapped to their labels. */
+export function collectAnswersDisplay(
+  flow: CategoryFlow,
+  answers: Answers,
+): AnswerRecord[] {
+  const byId = new Map(allQuestions(flow).map((q) => [q.id, q]));
+  return collectAnswers(flow, answers).map((rec) => {
+    const opts = byId.get(rec.questionId)?.options;
+    if (!opts) return rec;
+    const toLabel = (v: string) => opts.find((o) => o.value === v)?.label ?? v;
+    return {
+      ...rec,
+      value: Array.isArray(rec.value)
+        ? rec.value.map(toLabel)
+        : typeof rec.value === "string"
+          ? toLabel(rec.value)
+          : rec.value,
+    };
+  });
+}
+
 /**
  * Largest possible number of steps across all branches/paths. Used to keep the
  * progress bar from ever moving backward before a branch/path is chosen.

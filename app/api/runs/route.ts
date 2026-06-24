@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     answers: Array.isArray(body.answers) ? body.answers : [],
     diagnoses: Array.isArray(body.diagnoses) ? body.diagnoses : [],
     feedback,
+    agentNotes:
+      typeof body.agentNotes === "string" ? body.agentNotes : undefined,
   };
 
   await storage.saveRun(record);

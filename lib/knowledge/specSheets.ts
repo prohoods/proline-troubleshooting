@@ -3,6 +3,8 @@ import { SPEC_SHEETS } from "./specSheetsData";
 export interface SpecMatch {
   model: string;
   text: string;
+  /** The "Read more here" spec-sheet PDF URL parsed from the text, if present. */
+  pdfUrl?: string;
 }
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -51,5 +53,9 @@ export function findSpec(hints: (string | null | undefined)[]): SpecMatch | null
     variant ??
     [...candidates].sort((a, b) => a.normKey.length - b.normKey.length)[0];
 
-  return { model: pick.model, text: pick.text };
+  return {
+    model: pick.model,
+    text: pick.text,
+    pdfUrl: pick.text.match(/https?:\/\/\S+?\.pdf/i)?.[0],
+  };
 }

@@ -9,7 +9,8 @@ export type IconName =
   | "arrowRight"
   | "check"
   | "restart"
-  | "alert";
+  | "alert"
+  | "copy";
 
 export function Icon({
   name,
@@ -75,6 +76,13 @@ export function Icon({
         <svg {...shared}>
           <path d="M10.3 3.9 2.5 17.5A1.8 1.8 0 0 0 4 20.2h16a1.8 1.8 0 0 0 1.5-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0z" />
           <path d="M12 9v4.5M12 17h.01" />
+        </svg>
+      );
+    case "copy":
+      return (
+        <svg {...shared}>
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15V5a2 2 0 0 1 2-2h8" />
         </svg>
       );
   }
