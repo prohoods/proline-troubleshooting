@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     category: String(body.category),
     branchKey: body.branchKey,
     pathValue: body.pathValue,
+    order: body.order,
     answers: Array.isArray(body.answers) ? body.answers : [],
     diagnoses: Array.isArray(body.diagnoses) ? body.diagnoses : [],
     feedback,

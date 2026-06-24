@@ -59,12 +59,11 @@ const uploadChecklist = o(
 export const rangeHoodFlow: CategoryFlow = {
   productInfo: [
     {
-      id: "p_order_model",
+      id: "p_order_lookup",
       legacyLabel: "QUESTION 1",
-      prompt: "What is your order number, or what Proline model do you have?",
-      type: "text",
-      optional: true,
-      placeholder: "Order number or model (e.g. PLJW 104)",
+      prompt: "What is your order number, or the email you ordered with?",
+      type: "lookup",
+      placeholder: "Order number (e.g. 1024) or email",
     },
     {
       id: "p_hood_age",

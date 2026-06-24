@@ -1,6 +1,8 @@
 // What we persist for each completed run. Kept deliberately small and
 // serializable so any backend (Postgres, KV, Supabase…) can store it.
 
+import type { SelectedOrder } from "@/lib/shopify/types";
+
 export interface RunFeedback {
   /** 1–5 (how well the questionnaire worked). */
   rating: number;
@@ -24,6 +26,7 @@ export interface RunRecord {
   category: string; // e.g. "range_hood"
   branchKey?: string;
   pathValue?: string;
+  order?: SelectedOrder; // selected Shopify order + product, if looked up
   answers: RunAnswer[];
   diagnoses: RunDiagnosis[];
   feedback?: RunFeedback;

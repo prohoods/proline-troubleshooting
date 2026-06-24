@@ -10,6 +10,7 @@ import {
   projectedTotal,
   sectionLabel,
 } from "@/lib/flow/engine";
+import type { SelectedOrder } from "@/lib/shopify/types";
 import type { RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue } from "@/lib/types";
 import { CategoryScreen } from "./CategoryScreen";
@@ -24,6 +25,7 @@ export function Troubleshooter() {
   const [category, setCategory] = useState<Category | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   const [stepIndex, setStepIndex] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -40,6 +42,7 @@ export function Troubleshooter() {
   const resetRun = () => {
     setAnswers({});
     setStepIndex(0);
+    setSelectedOrder(null);
   };
 
   const pickCategory = (c: Category) => {
@@ -77,6 +80,7 @@ export function Troubleshooter() {
       category: category.id,
       branchKey: diagnosis.branchKey,
       pathValue: diagnosis.pathValue,
+      order: selectedOrder ?? undefined,
       answers: collectAnswers(flow, answers),
       diagnoses: diagnosis.diagnoses.map((d) => ({ id: d.id, title: d.title })),
       feedback,
@@ -132,6 +136,8 @@ export function Troubleshooter() {
         onChange={setAnswer}
         onBack={back}
         onContinue={next}
+        selectedOrder={selectedOrder}
+        onSelectOrder={setSelectedOrder}
       />
     );
   }

@@ -6,7 +6,9 @@ import { Icon } from "@/components/ui/Icon";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { Question } from "@/lib/flow/types";
 import type { Answers, AnswerValue } from "@/lib/types";
+import type { SelectedOrder } from "@/lib/shopify/types";
 import { MultiSelect } from "./inputs/MultiSelect";
+import { ShopifyLookup } from "./inputs/ShopifyLookup";
 import { SingleSelect } from "./inputs/SingleSelect";
 import { TextInput } from "./inputs/TextInput";
 import { UploadStub } from "./inputs/UploadStub";
@@ -21,6 +23,8 @@ export function QuestionScreen({
   onChange,
   onBack,
   onContinue,
+  selectedOrder,
+  onSelectOrder,
 }: {
   question: Question;
   answers: Answers;
@@ -31,6 +35,8 @@ export function QuestionScreen({
   onChange: (id: string, value: AnswerValue) => void;
   onBack: () => void;
   onContinue: () => void;
+  selectedOrder: SelectedOrder | null;
+  onSelectOrder: (sel: SelectedOrder | null) => void;
 }) {
   const value = answers[question.id];
 
@@ -86,6 +92,21 @@ export function QuestionScreen({
             value={Array.isArray(value) ? value : []}
             options={question.options}
             onChange={(v) => onChange(question.id, v)}
+          />
+        )}
+        {question.type === "lookup" && (
+          <ShopifyLookup
+            placeholder={question.placeholder}
+            selected={selectedOrder}
+            onSelect={(sel) => {
+              onSelectOrder(sel);
+              onChange(
+                question.id,
+                sel
+                  ? `${sel.orderName} — ${sel.product.title}${sel.product.sku ? ` (SKU ${sel.product.sku})` : ""}`
+                  : "",
+              );
+            }}
           />
         )}
 
