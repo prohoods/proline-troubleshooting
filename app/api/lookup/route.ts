@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { shopifyConfigured } from "@/lib/shopify/client";
+import { ShopifyError, shopifyConfigured } from "@/lib/shopify/client";
 import { lookupOrders } from "@/lib/shopify/lookup";
 
 // Server-side Shopify order lookup for the questionnaire's first step.
@@ -59,8 +59,15 @@ export async function POST(request: Request) {
   try {
     const orders = await lookupOrders(identifier);
     return NextResponse.json({ ok: true, orders });
-  } catch {
-    // Shopify unreachable / token invalid — generic upstream error (no detail leak).
-    return NextResponse.json({ ok: false, error: "upstream" }, { status: 502 });
+  } catch (e) {
+    // TEMP DIAGNOSTIC: surface error category + message while wiring up the live
+    // integration. Tighten back to a generic error once verified.
+    const detail = e instanceof ShopifyError ? e.code : "network";
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[lookup] failed:", detail, message);
+    return NextResponse.json(
+      { ok: false, error: "upstream", detail, message },
+      { status: 502 },
+    );
   }
 }

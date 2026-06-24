@@ -12,7 +12,6 @@ const ORDERS_QUERY = `
           name
           processedAt
           displayFulfillmentStatus
-          customer { firstName }
           lineItems(first: 25) {
             edges {
               node {
@@ -38,7 +37,6 @@ interface RawOrders {
         name: string;
         processedAt: string | null;
         displayFulfillmentStatus: string | null;
-        customer: { firstName: string | null } | null;
         lineItems: {
           edges: {
             node: {
@@ -77,7 +75,7 @@ export async function lookupOrders(identifier: string): Promise<OrderSummary[]> 
     name: node.name,
     processedAt: node.processedAt,
     fulfillmentStatus: node.displayFulfillmentStatus,
-    customerFirstName: node.customer?.firstName ?? null,
+    customerFirstName: null,
     products: node.lineItems.edges.map(({ node: li }) => ({
       lineItemId: li.id,
       title: li.title,
