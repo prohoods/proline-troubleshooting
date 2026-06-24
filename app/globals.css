@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/*
+ * Proline Range Hoods — brand tokens (see Brand Playbook v1.0)
+ * Palette is deliberately restrained: Sky Blue does the work, black for
+ * text & rules, white surface, yellow as a rare highlight. Ratio ~55/30/10/5.
+ */
+@theme {
+  --color-sky: #28a5de; /* Brand — Sky Blue / Bright Cerulean */
+  --color-sky-dark: #1b86bc; /* hover / active */
+  --color-sky-soft: #e8f5fc; /* selected fills, tints */
+  --color-ink: #2b2b2b; /* text & rules */
+  --color-surface: #ffffff; /* primary surface */
+  --color-mist: #f4f7f9; /* supporting light grey */
+  --color-line: #e2e8ed; /* hairline borders */
+  --color-muted: #6b7177; /* secondary text */
+  --color-accent: #ffd262; /* rare highlight only */
+  --color-danger: #c0392b; /* form / validation errors */
+
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Brand focus ring — Sky Blue, with offset so it never relies on color alone. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-sky);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
