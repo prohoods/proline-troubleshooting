@@ -1,3 +1,4 @@
+import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { Diagnosis, Likelihood } from "@/lib/diagnoses/types";
 import { findSpec } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
@@ -10,6 +11,8 @@ export interface DiagnoseContext {
   pathValue?: string;
   answers: RunAnswer[];
   order?: SelectedOrder;
+  /** Hood model the customer typed manually when no order was found. */
+  modelText?: string;
 }
 
 const SYSTEM = `You are the senior troubleshooting expert for Proline Range Hoods, a premium, direct-to-consumer maker of professional-grade kitchen and BBQ range hoods. A customer — or a Proline support agent helping them on a call — has just finished a guided troubleshooting questionnaire. Your job is to read what they told you and return the most likely cause(s) of their problem, each with a clear, safe fix.
@@ -97,7 +100,7 @@ export async function generateDiagnosis(
   ctx: DiagnoseContext,
 ): Promise<Diagnosis[]> {
   const product = ctx.order?.product;
-  const spec = findSpec([product?.title, product?.sku]);
+  const spec = findSpec([product?.title, product?.sku, ctx.modelText]);
 
   const userParts: string[] = [];
   if (spec) {
@@ -106,11 +109,24 @@ export async function generateDiagnosis(
     userParts.push(
       `PRODUCT: ${product.title}${product.sku ? ` (SKU ${product.sku})` : ""} — no spec sheet on file; do not state model-specific numbers as fact.`,
     );
+  } else if (ctx.modelText) {
+    userParts.push(
+      `PRODUCT: ${ctx.modelText} (customer-entered) — no spec sheet on file; do not state model-specific numbers as fact.`,
+    );
   } else {
     userParts.push("PRODUCT: not identified.");
   }
 
-  userParts.push(`\nWHAT THE CUSTOMER TOLD US:\n${buildTranscript(ctx.answers)}`);
+  // When we have the order, its date tells us the hood's age (we skip asking).
+  if (ctx.order?.processedAt) {
+    userParts.push(
+      `ORDER: ${ctx.order.orderName}, purchased ${ctx.order.processedAt}${ctx.order.fulfillmentStatus ? ` (${ctx.order.fulfillmentStatus})` : ""}.`,
+    );
+  }
+
+  // Drop the no-order sentinel — the manual model/age answers carry the context.
+  const answers = ctx.answers.filter((a) => a.value !== NO_ORDER_VALUE);
+  userParts.push(`\nWHAT THE CUSTOMER TOLD US:\n${buildTranscript(answers)}`);
   userParts.push("\nReturn the diagnosis JSON now.");
 
   const result = await chatJSON<{ diagnoses?: RawDx[] }>([

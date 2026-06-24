@@ -21,21 +21,43 @@ export function getActivePath(
   return branch.paths.find((p) => p.value === value);
 }
 
+function ruleMatches(
+  rule: NonNullable<Question["visibleWhen"]>,
+  answers: Answers,
+): boolean {
+  const v = answers[rule.questionId];
+  const arr = Array.isArray(v) ? v : typeof v === "string" ? [v] : [];
+  return rule.equals.some((e) => arr.includes(e));
+}
+
+/** Whether a question is currently shown (its visibleWhen gate passes). */
+export function isVisible(q: Question, answers: Answers): boolean {
+  return !q.visibleWhen || ruleMatches(q.visibleWhen, answers);
+}
+
+const visible = (qs: Question[], answers: Answers): Question[] =>
+  qs.filter((q) => isVisible(q, answers));
+
 /**
  * The ordered list of questions to ask given the answers so far. The list grows
- * as branch-point questions (issue type, indoor/outdoor) get answered.
+ * as branch-point questions (issue type, indoor/outdoor) get answered, and
+ * shrinks as `visibleWhen` gates hide questions (e.g. the manual hood questions
+ * appear only when no order was found).
  */
 export function buildSteps(flow: CategoryFlow, answers: Answers): Question[] {
-  const steps: Question[] = [...flow.productInfo, flow.issueType];
+  const steps: Question[] = [
+    ...visible(flow.productInfo, answers),
+    flow.issueType,
+  ];
   const branch = getActiveBranch(flow, answers);
   if (!branch) return steps;
 
   if (branch.kind === "linear") {
-    steps.push(...branch.questions);
+    steps.push(...visible(branch.questions, answers));
   } else {
-    steps.push(...branch.preSplit, branch.split);
+    steps.push(...visible(branch.preSplit, answers), branch.split);
     const path = getActivePath(branch, answers);
-    if (path) steps.push(...path.questions);
+    if (path) steps.push(...visible(path.questions, answers));
   }
   return steps;
 }
@@ -121,16 +143,23 @@ export function maxSteps(flow: CategoryFlow): number {
  * — never backward — without needing a stored floor (keeps render pure).
  */
 export function projectedTotal(flow: CategoryFlow, answers: Answers): number {
-  const base = flow.productInfo.length + 1;
+  const base = visible(flow.productInfo, answers).length + 1;
   const branch = getActiveBranch(flow, answers);
   if (!branch) return maxSteps(flow);
-  if (branch.kind === "linear") return base + branch.questions.length;
+  if (branch.kind === "linear")
+    return base + visible(branch.questions, answers).length;
   const path = getActivePath(branch, answers);
-  if (path) return base + branch.preSplit.length + 1 + path.questions.length;
+  if (path)
+    return (
+      base +
+      visible(branch.preSplit, answers).length +
+      1 +
+      visible(path.questions, answers).length
+    );
   return (
     base +
-    branch.preSplit.length +
+    visible(branch.preSplit, answers).length +
     1 +
-    Math.max(0, ...branch.paths.map((p) => p.questions.length))
+    Math.max(0, ...branch.paths.map((p) => visible(p.questions, answers).length))
   );
 }

@@ -1,3 +1,4 @@
+import { NO_ORDER_VALUE } from "./constants";
 import type { CategoryFlow, Option, Question } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -65,6 +66,16 @@ export const rangeHoodFlow: CategoryFlow = {
       type: "lookup",
       placeholder: "Order number (e.g. 1024) or email",
     },
+    // Manual fallback: shown only when the customer can't find their order (e.g.
+    // it predates the Shopify migration). A found order gives us the model and
+    // purchase date, so these are skipped on that path.
+    {
+      id: "p_hood_model",
+      prompt: "Which Proline hood do you have?",
+      type: "text",
+      placeholder: "Model number, e.g. PLJW 104",
+      visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
+    },
     {
       id: "p_hood_age",
       legacyLabel: "QUESTION 2",
@@ -77,6 +88,7 @@ export const rangeHoodFlow: CategoryFlow = {
         "More than 5 years",
         "Unsure",
       ),
+      visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
     },
   ],
 

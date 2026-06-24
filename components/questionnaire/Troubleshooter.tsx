@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import { resolveDiagnoses } from "@/lib/diagnoses/resolve";
 import type { Category } from "@/lib/flow";
+import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import {
   buildSteps,
   collectAnswers,
@@ -79,6 +80,12 @@ export function Troubleshooter() {
           pathValue: diagnosis?.pathValue,
           answers: collectAnswers(flow, answers),
           order: selectedOrder ?? undefined,
+          // Only on the manual path — avoids a stale model overriding a found order.
+          modelText:
+            answers["p_order_lookup"] === NO_ORDER_VALUE &&
+            typeof answers["p_hood_model"] === "string"
+              ? answers["p_hood_model"]
+              : undefined,
         }),
       });
       const json = (await res.json().catch(() => ({ ok: false }))) as {

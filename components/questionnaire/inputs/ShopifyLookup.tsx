@@ -47,10 +47,14 @@ export function ShopifyLookup({
   placeholder,
   selected,
   onSelect,
+  manual,
+  onSetManual,
 }: {
   placeholder?: string;
   selected: SelectedOrder | null;
   onSelect: (sel: SelectedOrder | null) => void;
+  manual: boolean;
+  onSetManual: (on: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,6 +108,25 @@ export function ShopifyLookup({
   const isPicked = (order: OrderSummary, p: OrderProduct) =>
     selected?.orderId === order.id &&
     selected?.product.lineItemId === p.lineItemId;
+
+  if (manual) {
+    return (
+      <div className="rounded-2xl border border-line bg-mist/60 p-5">
+        <p className="text-sm text-ink">
+          No problem — we&apos;ll ask you a couple of quick questions about your
+          hood instead.
+        </p>
+        <button
+          type="button"
+          onClick={() => onSetManual(false)}
+          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-sky hover:text-sky-dark"
+        >
+          <Icon name="arrowLeft" className="h-4 w-4" /> Search for my order
+          instead
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -213,6 +236,15 @@ export function ShopifyLookup({
           ))}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => onSetManual(true)}
+        className="mt-5 block text-left text-sm font-medium text-sky hover:text-sky-dark"
+      >
+        Can&apos;t find your order? Orders placed before 2024 may not be on file
+        — enter your hood manually →
+      </button>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { Question } from "@/lib/flow/types";
 import type { Answers, AnswerValue } from "@/lib/types";
 import type { SelectedOrder } from "@/lib/shopify/types";
@@ -98,6 +99,11 @@ export function QuestionScreen({
           <ShopifyLookup
             placeholder={question.placeholder}
             selected={selectedOrder}
+            manual={value === NO_ORDER_VALUE}
+            onSetManual={(on) => {
+              onSelectOrder(null);
+              onChange(question.id, on ? NO_ORDER_VALUE : "");
+            }}
             onSelect={(sel) => {
               onSelectOrder(sel);
               onChange(

@@ -21,6 +21,12 @@ export interface FollowUp {
   placeholder?: string;
 }
 
+/** Show a question only when another answer matches one of these values. */
+export interface VisibilityRule {
+  questionId: string;
+  equals: string[];
+}
+
 export interface Question {
   id: string;
   /** The "QUESTION N" label from the source diagram, for traceability. */
@@ -33,6 +39,8 @@ export interface Question {
   /** Optional questions never block "Continue" (text, uploads, terminal notes). */
   optional?: boolean;
   followUp?: FollowUp;
+  /** Show this question only when the gate passes (else it's skipped entirely). */
+  visibleWhen?: VisibilityRule;
   /** The end-of-branch "Additional Information" node. */
   terminal?: boolean;
 }

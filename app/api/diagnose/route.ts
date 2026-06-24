@@ -56,6 +56,8 @@ export async function POST(request: Request) {
       pathValue: body.pathValue,
       answers: body.answers as RunAnswer[],
       order: body.order,
+      modelText:
+        typeof body.modelText === "string" ? body.modelText : undefined,
     };
   } catch {
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
