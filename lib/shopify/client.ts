@@ -15,28 +15,42 @@ export class ShopifyError extends Error {
   }
 }
 
+/**
+ * Normalize SHOPIFY_STORE_DOMAIN to a bare host. Tolerates common mistakes:
+ * a leading https:// (or http://), a trailing slash/path, or stray whitespace.
+ * Must be the admin domain, e.g. "your-store.myshopify.com".
+ */
+function storeHost(): string | undefined {
+  const raw = process.env.SHOPIFY_STORE_DOMAIN?.trim();
+  if (!raw) return undefined;
+  return raw
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/.*$/, "")
+    .trim();
+}
+
 /** True when the Shopify env vars are present (lets routes 503 cleanly if not). */
 export function shopifyConfigured(): boolean {
-  return Boolean(
-    process.env.SHOPIFY_STORE_DOMAIN && process.env.SHOPIFY_ADMIN_ACCESS_TOKEN,
-  );
+  return Boolean(storeHost() && process.env.SHOPIFY_ADMIN_ACCESS_TOKEN);
 }
 
 export async function shopifyGraphQL<T>(
   query: string,
   variables?: Record<string, unknown>,
 ): Promise<T> {
-  const domain = process.env.SHOPIFY_STORE_DOMAIN;
+  const host = storeHost();
   const token = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
-  const version = process.env.SHOPIFY_API_VERSION || DEFAULT_API_VERSION;
+  const version = process.env.SHOPIFY_API_VERSION?.trim() || DEFAULT_API_VERSION;
 
-  if (!domain || !token) {
+  if (!host || !token) {
     throw new ShopifyError("not_configured", "Shopify credentials are not set");
   }
 
-  const res = await fetch(
-    `https://${domain}/admin/api/${version}/graphql.json`,
-    {
+  const endpoint = `https://${host}/admin/api/${version}/graphql.json`;
+
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -44,16 +58,24 @@ export async function shopifyGraphQL<T>(
       },
       body: JSON.stringify({ query, variables }),
       cache: "no-store",
-    },
-  );
+    });
+  } catch (e) {
+    throw new ShopifyError(
+      "upstream",
+      `network error reaching ${host} (api ${version}): ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
 
   if (!res.ok) {
-    throw new ShopifyError("upstream", `Shopify HTTP ${res.status}`);
+    throw new ShopifyError(
+      "upstream",
+      `Shopify HTTP ${res.status} from ${host} (api ${version})`,
+    );
   }
 
   const json = (await res.json()) as { data?: T; errors?: unknown };
   if (json.errors) {
-    throw new ShopifyError("graphql", JSON.stringify(json.errors));
+    throw new ShopifyError("graphql", JSON.stringify(json.errors).slice(0, 500));
   }
   return json.data as T;
 }
