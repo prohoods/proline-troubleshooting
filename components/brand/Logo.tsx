@@ -1,12 +1,13 @@
 import { Flame } from "./Flame";
 
-type Tone = "brand" | "white";
+type Tone = "brand" | "white" | "mono";
 
 /**
- * Primary lockup: flame mark + "PROLINE" wordmark with "RANGE HOODS" subtitle,
- * set in Montserrat (the brand typeface). Two surface treatments per the playbook:
+ * Primary lockup: flame mark + "PROLINE" wordmark with "KITCHEN APPLIANCES"
+ * subtitle, set in Montserrat (the brand typeface). Treatments:
  *  - "brand": Sky Blue flame + ink wordmark, for white/light surfaces
  *  - "white": all white, for Sky Blue / dark surfaces
+ *  - "mono":  all black, matching the official Kitchen Appliances lockup
  */
 export function Logo({
   tone = "brand",
@@ -17,9 +18,15 @@ export function Logo({
   showTagline?: boolean;
   className?: string;
 }) {
-  const flameColor = tone === "white" ? "text-white" : "text-sky";
+  const flameColor =
+    tone === "white" ? "text-white" : tone === "mono" ? "text-ink" : "text-sky";
   const wordColor = tone === "white" ? "text-white" : "text-ink";
-  const tagColor = tone === "white" ? "text-white/80" : "text-muted";
+  const tagColor =
+    tone === "white"
+      ? "text-white/80"
+      : tone === "mono"
+        ? "text-ink"
+        : "text-muted";
 
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
@@ -32,9 +39,9 @@ export function Logo({
         </span>
         {showTagline && (
           <span
-            className={`mt-1 text-[0.5rem] font-medium tracking-[0.46em] ${tagColor}`}
+            className={`mt-1 text-[0.5rem] font-semibold tracking-[0.14em] ${tagColor}`}
           >
-            RANGE HOODS
+            KITCHEN APPLIANCES
           </span>
         )}
       </span>

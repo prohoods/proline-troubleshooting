@@ -49,13 +49,18 @@ export function CategoryScreen({
             key={c.id}
             type="button"
             onClick={() => (c.available ? onPick(c) : setUnavailable(c))}
-            className="group relative flex flex-col items-start gap-3 rounded-2xl border border-line bg-white p-6 text-left transition hover:border-sky hover:shadow-sm"
+            className="group relative flex flex-col items-center gap-4 rounded-2xl border border-line bg-white p-8 text-center transition hover:border-sky hover:shadow-md"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-soft text-sky">
-              <Icon name={c.icon} className="h-6 w-6" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/icons/${c.id}.svg`}
+              alt=""
+              className={`aspect-square w-full max-w-[200px] object-contain ${
+                c.available ? "" : "opacity-40"
+              }`}
+            />
             <span className="text-xl font-bold text-ink">{c.label}</span>
-            <span className="text-sm text-muted">{c.blurb}</span>
+            <span className="max-w-xs text-sm text-muted">{c.blurb}</span>
             {!c.available && (
               <span className="absolute right-4 top-4 rounded-full bg-mist px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-muted">
                 Coming soon
