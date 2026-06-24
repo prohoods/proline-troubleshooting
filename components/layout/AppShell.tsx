@@ -1,4 +1,4 @@
-import { Logo } from "@/components/brand/Logo";
+import { HeaderLogo } from "@/components/brand/HeaderLogo";
 
 // White-surface chrome: logo header, generous content column, quiet footer.
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -6,7 +6,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-dvh flex-col bg-surface">
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Logo tone="mono" />
+          <HeaderLogo />
           <span className="hidden text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted sm:block">
             Agent Console
           </span>
