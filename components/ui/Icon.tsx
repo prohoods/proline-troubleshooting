@@ -10,7 +10,8 @@ export type IconName =
   | "check"
   | "restart"
   | "alert"
-  | "copy";
+  | "copy"
+  | "chevron";
 
 export function Icon({
   name,
@@ -83,6 +84,12 @@ export function Icon({
         <svg {...shared}>
           <rect x="9" y="9" width="11" height="11" rx="2" />
           <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+        </svg>
+      );
+    case "chevron":
+      return (
+        <svg {...shared}>
+          <path d="M6 9l6 6 6-6" />
         </svg>
       );
   }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
 import type { DiagnosisResult } from "@/lib/diagnoses/resolve";
-import { LIKELIHOOD_LABEL, type Diagnosis } from "@/lib/diagnoses/types";
+import type { Diagnosis } from "@/lib/diagnoses/types";
 import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { AnswerRecord } from "@/lib/flow/engine";
 import type { SpecMatch } from "@/lib/knowledge/specSheets";
@@ -12,60 +12,58 @@ import type { SelectedOrder } from "@/lib/shopify/types";
 import type { RunFeedback } from "@/lib/storage/types";
 import { FeedbackForm } from "./FeedbackForm";
 
-const CHIP: Record<Diagnosis["likelihood"], string> = {
-  most_likely: "bg-sky text-white",
-  possible: "bg-sky-soft text-ink",
-  less_likely: "bg-mist text-muted",
-};
-
 function DiagnosisCard({ d }: { d: Diagnosis }) {
+  const [open, setOpen] = useState(false);
+  const hasFix =
+    d.steps.length > 0 || (d.partsTools?.length ?? 0) > 0 || !!d.escalation;
+
   return (
-    <article className="rounded-2xl border border-line bg-white p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${CHIP[d.likelihood]}`}
-        >
-          {LIKELIHOOD_LABEL[d.likelihood]}
+    <div className="rounded-xl border border-line bg-white p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 rounded-full bg-sky-soft px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-wide text-sky">
+          Possible
         </span>
-        {d.placeholder && (
-          <span className="rounded-full bg-accent/40 px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-ink/70">
-            Placeholder content
-          </span>
-        )}
-      </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-ink">{d.title}</h3>
+          <p className="mt-0.5 text-sm text-muted">{d.summary}</p>
 
-      <h3 className="mt-3 text-xl font-bold text-ink">{d.title}</h3>
-      <p className="mt-2 text-muted">{d.summary}</p>
+          {hasFix && (
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky hover:text-sky-dark"
+            >
+              {open ? "Hide fix" : "Show fix"}
+              <Icon
+                name="chevron"
+                className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
 
-      <h4 className="mt-5 text-xs font-bold uppercase tracking-wide text-ink">
-        Suggested fix
-      </h4>
-      <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-ink/90">
-        {d.steps.map((s, i) => (
-          <li key={i}>{s}</li>
-        ))}
-      </ol>
-
-      {d.partsTools && d.partsTools.length > 0 && (
-        <>
-          <h4 className="mt-5 text-xs font-bold uppercase tracking-wide text-ink">
-            Parts &amp; tools
-          </h4>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-ink/90">
-            {d.partsTools.map((p, i) => (
-              <li key={i}>{p}</li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {d.escalation && (
-        <div className="mt-5 flex gap-2 rounded-xl bg-mist p-4 text-sm text-muted">
-          <Icon name="alert" className="h-5 w-5 shrink-0 text-sky" />
-          <span>{d.escalation}</span>
+          {open && hasFix && (
+            <div className="mt-3 border-t border-line pt-3">
+              {d.steps.length > 0 && (
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-ink/90">
+                  {d.steps.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ol>
+              )}
+              {d.partsTools && d.partsTools.length > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  <span className="font-semibold text-ink">Parts &amp; tools:</span>{" "}
+                  {d.partsTools.join(", ")}
+                </p>
+              )}
+              {d.escalation && (
+                <p className="mt-2 text-xs text-muted">{d.escalation}</p>
+              )}
+            </div>
+          )}
         </div>
-      )}
-    </article>
+      </div>
+    </div>
   );
 }
 
@@ -100,9 +98,9 @@ function buildSummary(
     L.push(`- ${a.prompt} -> ${v}`);
   }
 
-  L.push("", "LIKELY DIAGNOSIS");
+  L.push("", "POSSIBLE CAUSES");
   diagnoses.forEach((d, i) => {
-    L.push(`${i + 1}. [${LIKELIHOOD_LABEL[d.likelihood]}] ${d.title}`);
+    L.push(`${i + 1}. ${d.title}`);
     L.push(`   ${d.summary}`);
     if (d.steps.length) L.push(`   Fix: ${d.steps.join(" | ")}`);
     if (d.escalation) L.push(`   Escalate: ${d.escalation}`);
@@ -164,13 +162,13 @@ export function DiagnosisScreen({
 
   return (
     <section className="py-2">
-      <Eyebrow>Likely diagnosis</Eyebrow>
+      <Eyebrow>Possible causes</Eyebrow>
       <h2 className="mt-5 text-3xl font-bold text-ink sm:text-4xl">
         Here&apos;s what we think.
       </h2>
       <p className="mt-3 max-w-xl text-muted">
-        Based on your answers, these are the most likely causes — each with a
-        suggested fix. Work through them top to bottom.
+        Based on the answers, here are the possible causes. Tap a cause to see
+        the suggested fix.
       </p>
 
       {/* Agent toolbar: product context, spec PDF, copy-to-ticket */}
@@ -203,7 +201,7 @@ export function DiagnosisScreen({
         </button>
       </div>
 
-      <div className="mt-7 space-y-4">
+      <div className="mt-7 space-y-3">
         {result.diagnoses.map((d) => (
           <DiagnosisCard key={d.id} d={d} />
         ))}
