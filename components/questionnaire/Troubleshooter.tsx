@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { Diagnosis } from "@/lib/diagnoses/types";
 import { resolveDiagnoses } from "@/lib/diagnoses/resolve";
 import type { Category } from "@/lib/flow";
 import {
@@ -26,6 +27,10 @@ export function Troubleshooter() {
   const [answers, setAnswers] = useState<Answers>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null);
+  // AI-tailored diagnosis: null until fetched; stays null to fall back to the
+  // deterministic diagnoses when the LLM is unconfigured or the call fails.
+  const [aiDiagnoses, setAiDiagnoses] = useState<Diagnosis[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -36,6 +41,13 @@ export function Troubleshooter() {
   const safeIndex = Math.min(stepIndex, Math.max(steps.length - 1, 0));
   const current = steps[safeIndex];
 
+  // Deterministic diagnoses for the completed run — also the fallback when the AI
+  // is unavailable, and the source of branch/path metadata for the saved record.
+  const diagnosis = useMemo(
+    () => (flow ? resolveDiagnoses(flow, answers) : null),
+    [flow, answers],
+  );
+
   const setAnswer = (id: string, value: AnswerValue) =>
     setAnswers((prev) => ({ ...prev, [id]: value }));
 
@@ -43,12 +55,44 @@ export function Troubleshooter() {
     setAnswers({});
     setStepIndex(0);
     setSelectedOrder(null);
+    setAiDiagnoses(null);
+    setAiLoading(false);
   };
 
   const pickCategory = (c: Category) => {
     resetRun();
     setCategory(c);
     setPhase("questions");
+  };
+
+  const runDiagnosis = async () => {
+    if (!flow || !category) return;
+    setAiLoading(true);
+    setAiDiagnoses(null);
+    try {
+      const res = await fetch("/api/diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: category.id,
+          branchKey: diagnosis?.branchKey,
+          pathValue: diagnosis?.pathValue,
+          answers: collectAnswers(flow, answers),
+          order: selectedOrder ?? undefined,
+        }),
+      });
+      const json = (await res.json().catch(() => ({ ok: false }))) as {
+        ok?: boolean;
+        diagnoses?: Diagnosis[];
+      };
+      if (res.ok && json.ok && Array.isArray(json.diagnoses) && json.diagnoses.length) {
+        setAiDiagnoses(json.diagnoses);
+      }
+    } catch {
+      // Leave aiDiagnoses null → DiagnosisScreen renders the deterministic set.
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const back = () => {
@@ -61,16 +105,13 @@ export function Troubleshooter() {
     const nextSteps = buildSteps(flow, answers);
     if (current.terminal && safeIndex + 1 >= nextSteps.length) {
       setPhase("diagnosis");
+      void runDiagnosis();
     } else {
       setStepIndex((i) => i + 1);
     }
   };
 
-  // Diagnoses for the completed run.
-  const diagnosis = useMemo(
-    () => (flow ? resolveDiagnoses(flow, answers) : null),
-    [flow, answers],
-  );
+  const shownDiagnoses = aiDiagnoses ?? diagnosis?.diagnoses ?? [];
 
   const submitFeedback = async (
     feedback: RunFeedback,
@@ -82,7 +123,7 @@ export function Troubleshooter() {
       pathValue: diagnosis.pathValue,
       order: selectedOrder ?? undefined,
       answers: collectAnswers(flow, answers),
-      diagnoses: diagnosis.diagnoses.map((d) => ({ id: d.id, title: d.title })),
+      diagnoses: shownDiagnoses.map((d) => ({ id: d.id, title: d.title })),
       feedback,
     };
     try {
@@ -142,14 +183,34 @@ export function Troubleshooter() {
     );
   }
 
-  if (phase === "diagnosis" && diagnosis) {
-    return (
-      <DiagnosisScreen
-        result={diagnosis}
-        onSubmitFeedback={submitFeedback}
-        onRestart={restart}
-      />
-    );
+  if (phase === "diagnosis") {
+    if (aiLoading) {
+      return (
+        <section className="flex flex-col items-center justify-center py-24 text-center">
+          <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-line border-t-sky" />
+          <h2 className="mt-6 text-xl font-bold text-ink">
+            Analyzing your answers…
+          </h2>
+          <p className="mt-2 max-w-sm text-sm text-muted">
+            We&apos;re matching what you told us with your model&apos;s specs to
+            find the most likely fix.
+          </p>
+        </section>
+      );
+    }
+    if (diagnosis && shownDiagnoses.length > 0) {
+      return (
+        <DiagnosisScreen
+          result={{
+            branchKey: diagnosis.branchKey,
+            pathValue: diagnosis.pathValue,
+            diagnoses: shownDiagnoses,
+          }}
+          onSubmitFeedback={submitFeedback}
+          onRestart={restart}
+        />
+      );
+    }
   }
 
   return null;
