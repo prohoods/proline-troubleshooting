@@ -60,14 +60,11 @@ export async function POST(request: Request) {
     const orders = await lookupOrders(identifier);
     return NextResponse.json({ ok: true, orders });
   } catch (e) {
-    // TEMP DIAGNOSTIC: surface error category + message while wiring up the live
-    // integration. Tighten back to a generic error once verified.
+    // Log the detail server-side (Vercel logs); return a generic error to clients
+    // so the host/version/error text isn't exposed publicly.
     const detail = e instanceof ShopifyError ? e.code : "network";
     const message = e instanceof Error ? e.message : String(e);
     console.error("[lookup] failed:", detail, message);
-    return NextResponse.json(
-      { ok: false, error: "upstream", detail, message },
-      { status: 502 },
-    );
+    return NextResponse.json({ ok: false, error: "upstream" }, { status: 502 });
   }
 }
