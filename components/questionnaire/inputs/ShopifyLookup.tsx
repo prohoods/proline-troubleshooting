@@ -242,8 +242,7 @@ export function ShopifyLookup({
         onClick={() => onSetManual(true)}
         className="mt-5 block text-left text-sm font-medium text-sky hover:text-sky-dark"
       >
-        Can&apos;t find your order? Orders placed before 2024 may not be on file
-        — enter your hood manually →
+        Not sure? Enter info here →
       </button>
     </div>
   );
