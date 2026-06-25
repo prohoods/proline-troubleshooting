@@ -1,24 +1,9 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { getLogoBuffer } from "@/lib/pdf/logo";
 import { buildRunPdf, type RunPdfData } from "@/lib/pdf/runPdf";
 
-// Generates a branded PDF of a completed run (also reused later to attach to the
+// Generates a branded PDF of a completed run (also reused to attach to the
 // stopgap ticket). Node runtime — pdfkit is not edge-compatible.
 export const runtime = "nodejs";
-
-// Read the logo once per instance.
-let logoCache: Buffer | null | undefined;
-function logoBuffer(): Buffer | null {
-  if (logoCache !== undefined) return logoCache;
-  try {
-    logoCache = readFileSync(
-      join(process.cwd(), "public/brand/Proline_Kitchen_Appliances-blk.png"),
-    );
-  } catch {
-    logoCache = null;
-  }
-  return logoCache;
-}
 
 export async function POST(request: Request) {
   let data: RunPdfData;
@@ -32,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const pdf = await buildRunPdf(data, logoBuffer());
+    const pdf = await buildRunPdf(data, getLogoBuffer());
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",

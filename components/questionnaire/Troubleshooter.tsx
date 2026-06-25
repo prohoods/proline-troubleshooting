@@ -166,10 +166,19 @@ export function Troubleshooter() {
       category: category.id,
       branchKey: diagnosis.branchKey,
       pathValue: diagnosis.pathValue,
+      model: spec?.model ?? selectedOrder?.product.sku ?? undefined,
       order: selectedOrder ?? undefined,
       contact: effectiveContact ?? undefined,
-      answers: collectAnswers(flow, answers),
-      diagnoses: shownDiagnoses.map((d) => ({ id: d.id, title: d.title })),
+      answers: displayAnswers
+        .filter((a) => a.questionId !== "p_order_lookup")
+        .map((a) => ({ prompt: a.prompt, value: a.value })),
+      diagnoses: shownDiagnoses.map((d) => ({
+        title: d.title,
+        summary: d.summary,
+        steps: d.steps,
+        partsTools: d.partsTools,
+        escalation: d.escalation,
+      })),
       feedback,
       agentNotes: agentNotes?.trim() || undefined,
     };

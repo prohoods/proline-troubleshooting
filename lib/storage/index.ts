@@ -1,22 +1,26 @@
 import { memoryStorage } from "./memory";
+import { postgresConfigured, postgresStorage } from "./postgres";
 import type { StorageAdapter } from "./types";
 
 // ┌─ Persistence seam ────────────────────────────────────────────────────────┐
-// │ v1 default: in-memory + structured console logging (see ./memory.ts).      │
-// │ To plug in a real database, implement StorageAdapter (e.g. ./postgres,     │
-// │ ./vercel-kv, ./supabase) and assign it here — nothing else in the app      │
-// │ needs to change.                                                           │
+// │ Uses Vercel Postgres when configured (POSTGRES_URL / DATABASE_URL present), │
+// │ otherwise falls back to in-memory + structured console logging so the app   │
+// │ keeps working locally and before the database is provisioned.               │
 // └────────────────────────────────────────────────────────────────────────────┘
-export const storage: StorageAdapter = memoryStorage;
+export const storage: StorageAdapter = postgresConfigured()
+  ? postgresStorage
+  : memoryStorage;
 
-// OUT OF SCOPE (v1): auto-creating a customer-service ticket when a run completes.
-// Implement this and call it from app/api/runs/route.ts when ready.
+// OUT OF SCOPE (#4): auto-creating a customer-service ticket when a run completes.
+// Implement and call it from app/api/runs/route.ts when the stopgap API lands.
 //   export async function notifyTicketSystem(record: RunRecord): Promise<void> {}
 
 export type {
   RunRecord,
   RunFeedback,
   RunAnswer,
-  RunDiagnosis,
+  StoredAnswer,
+  StoredDiagnosis,
+  Contact,
   StorageAdapter,
 } from "./types";

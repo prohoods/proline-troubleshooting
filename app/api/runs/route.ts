@@ -1,11 +1,46 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { findSpec } from "@/lib/knowledge/specSheets";
+import { getLogoBuffer } from "@/lib/pdf/logo";
+import { buildRunPdf, type RunPdfData } from "@/lib/pdf/runPdf";
 import { storage } from "@/lib/storage";
-import type { RunRecord } from "@/lib/storage/types";
+import { blobConfigured, uploadRunPdf } from "@/lib/storage/blob";
+import type {
+  RunRecord,
+  StoredAnswer,
+  StoredDiagnosis,
+} from "@/lib/storage/types";
 
-// Single ingress point for completed runs (selections + diagnosis + feedback).
-// Persistence is delegated to the swappable storage module.
+// Single ingress point for completed runs. Renders + stores the PDF, then
+// persists the run via the storage module.
 export const runtime = "nodejs";
+
+function buildPdfData(record: RunRecord): RunPdfData {
+  const spec = findSpec([
+    record.order?.product.title,
+    record.order?.product.sku,
+    record.model,
+  ]);
+  return {
+    generatedAt: record.createdAt,
+    order: record.order
+      ? {
+          orderName: record.order.orderName,
+          processedAt: record.order.processedAt,
+          fulfillmentStatus: record.order.fulfillmentStatus,
+          product: {
+            title: record.order.product.title,
+            sku: record.order.product.sku,
+          },
+        }
+      : null,
+    contact: record.contact ?? null,
+    spec: spec ? { model: spec.model, pdfUrl: spec.pdfUrl } : null,
+    answers: record.answers,
+    diagnoses: record.diagnoses,
+    notes: record.agentNotes,
+  };
+}
 
 export async function POST(request: Request) {
   let body: Partial<RunRecord>;
@@ -55,21 +90,37 @@ export async function POST(request: Request) {
     category: String(body.category),
     branchKey: body.branchKey,
     pathValue: body.pathValue,
+    model: typeof body.model === "string" ? body.model : undefined,
     order: body.order,
     contact:
       body.contact && typeof body.contact === "object"
         ? body.contact
         : undefined,
-    answers: Array.isArray(body.answers) ? body.answers : [],
-    diagnoses: Array.isArray(body.diagnoses) ? body.diagnoses : [],
+    answers: Array.isArray(body.answers) ? (body.answers as StoredAnswer[]) : [],
+    diagnoses: Array.isArray(body.diagnoses)
+      ? (body.diagnoses as StoredDiagnosis[])
+      : [],
     feedback,
     agentNotes:
       typeof body.agentNotes === "string" ? body.agentNotes : undefined,
   };
 
-  await storage.saveRun(record);
+  // Render the PDF and stash it in Blob — best-effort, never blocks the save.
+  try {
+    const pdf = await buildRunPdf(buildPdfData(record), getLogoBuffer());
+    if (blobConfigured()) record.pdfUrl = await uploadRunPdf(record.id, pdf);
+  } catch (e) {
+    console.error("[runs] pdf/blob failed:", e instanceof Error ? e.message : e);
+  }
 
-  // OUT OF SCOPE (v1): notifyTicketSystem(record) — see lib/storage/index.ts.
+  try {
+    await storage.saveRun(record);
+  } catch (e) {
+    console.error("[runs] save failed:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ ok: false, error: "save_failed" }, { status: 500 });
+  }
 
-  return NextResponse.json({ ok: true, id: record.id });
+  // OUT OF SCOPE (#4): notifyTicketSystem(record) — see lib/storage/index.ts.
+
+  return NextResponse.json({ ok: true, id: record.id, pdfUrl: record.pdfUrl });
 }
