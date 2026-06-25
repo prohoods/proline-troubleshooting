@@ -9,7 +9,7 @@ import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { AnswerRecord } from "@/lib/flow/engine";
 import type { SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
-import type { RunFeedback } from "@/lib/storage/types";
+import type { Contact, RunFeedback } from "@/lib/storage/types";
 import { FeedbackForm } from "./FeedbackForm";
 
 function DiagnosisCard({ d }: { d: Diagnosis }) {
@@ -70,6 +70,7 @@ function DiagnosisCard({ d }: { d: Diagnosis }) {
 /** Plain-text run summary an agent can paste straight into a ticket. */
 function buildSummary(
   order: SelectedOrder | null,
+  contact: Contact | null,
   answers: AnswerRecord[],
   diagnoses: Diagnosis[],
   spec: SpecMatch | null,
@@ -90,6 +91,11 @@ function buildSummary(
     L.push(`Product: ${spec.model} (entered manually)`);
   }
   if (spec?.pdfUrl) L.push(`Spec sheet: ${spec.pdfUrl}`);
+
+  if (contact) {
+    L.push("", "CONTACT", `Name: ${contact.name}`, `Email: ${contact.email}`);
+    if (contact.phone?.trim()) L.push(`Phone: ${contact.phone}`);
+  }
 
   L.push("", "ANSWERS");
   for (const a of answers) {
@@ -114,6 +120,7 @@ function buildSummary(
 export function DiagnosisScreen({
   result,
   order,
+  contact,
   answers,
   spec,
   onSubmitFeedback,
@@ -121,6 +128,7 @@ export function DiagnosisScreen({
 }: {
   result: DiagnosisResult;
   order: SelectedOrder | null;
+  contact: Contact | null;
   answers: AnswerRecord[];
   spec: SpecMatch | null;
   onSubmitFeedback: (
@@ -134,7 +142,14 @@ export function DiagnosisScreen({
   const [copied, setCopied] = useState(false);
 
   const copySummary = async () => {
-    const text = buildSummary(order, answers, result.diagnoses, spec, notes);
+    const text = buildSummary(
+      order,
+      contact,
+      answers,
+      result.diagnoses,
+      spec,
+      notes,
+    );
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -179,6 +194,11 @@ export function DiagnosisScreen({
           </p>
           {productSub && (
             <p className="truncate text-xs text-muted">{productSub}</p>
+          )}
+          {contact && (
+            <p className="truncate text-xs text-muted">
+              {contact.name} · {contact.email}
+            </p>
           )}
         </div>
         {spec?.pdfUrl && (

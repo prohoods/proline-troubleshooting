@@ -56,6 +56,10 @@ export async function POST(request: Request) {
     branchKey: body.branchKey,
     pathValue: body.pathValue,
     order: body.order,
+    contact:
+      body.contact && typeof body.contact === "object"
+        ? body.contact
+        : undefined,
     answers: Array.isArray(body.answers) ? body.answers : [],
     diagnoses: Array.isArray(body.diagnoses) ? body.diagnoses : [],
     feedback,

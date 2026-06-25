@@ -1,4 +1,4 @@
-import { NO_ORDER_VALUE } from "./constants";
+import { CONTACT_QUESTION_ID, NO_ORDER_VALUE } from "./constants";
 import type { CategoryFlow, Option, Question } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -88,6 +88,12 @@ export const rangeHoodFlow: CategoryFlow = {
         "More than 5 years",
         "Unsure",
       ),
+      visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
+    },
+    {
+      id: CONTACT_QUESTION_ID,
+      prompt: "How can we reach you?",
+      type: "contact",
       visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
     },
   ],

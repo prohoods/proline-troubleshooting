@@ -15,7 +15,7 @@ import {
 } from "@/lib/flow/engine";
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
-import type { RunFeedback } from "@/lib/storage/types";
+import type { Contact, RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue } from "@/lib/types";
 import { CategoryScreen } from "./CategoryScreen";
 import { DiagnosisScreen } from "./DiagnosisScreen";
@@ -30,6 +30,7 @@ export function Troubleshooter() {
   const [answers, setAnswers] = useState<Answers>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null);
+  const [contact, setContact] = useState<Contact | null>(null);
   // AI-tailored diagnosis: null until fetched; stays null to fall back to the
   // deterministic diagnoses when the LLM is unconfigured or the call fails.
   const [aiDiagnoses, setAiDiagnoses] = useState<Diagnosis[] | null>(null);
@@ -79,6 +80,7 @@ export function Troubleshooter() {
     setAnswers({});
     setStepIndex(0);
     setSelectedOrder(null);
+    setContact(null);
     setAiDiagnoses(null);
     setAiLoading(false);
   };
@@ -153,6 +155,7 @@ export function Troubleshooter() {
       branchKey: diagnosis.branchKey,
       pathValue: diagnosis.pathValue,
       order: selectedOrder ?? undefined,
+      contact: contact ?? undefined,
       answers: collectAnswers(flow, answers),
       diagnoses: shownDiagnoses.map((d) => ({ id: d.id, title: d.title })),
       feedback,
@@ -211,6 +214,8 @@ export function Troubleshooter() {
         onContinue={next}
         selectedOrder={selectedOrder}
         onSelectOrder={setSelectedOrder}
+        contact={contact}
+        onContact={setContact}
       />
     );
   }
@@ -241,6 +246,7 @@ export function Troubleshooter() {
           order={selectedOrder}
           answers={displayAnswers}
           spec={spec}
+          contact={contact}
           onSubmitFeedback={submitFeedback}
           onRestart={restart}
         />

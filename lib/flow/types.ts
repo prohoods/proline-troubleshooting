@@ -5,7 +5,13 @@
 // Hood Performance / Airflow branch additionally splits into Indoors / Outdoors
 // sub-paths. This model captures both shapes.
 
-export type QuestionType = "single" | "multi" | "text" | "upload" | "lookup";
+export type QuestionType =
+  | "single"
+  | "multi"
+  | "text"
+  | "upload"
+  | "lookup"
+  | "contact";
 
 export interface Option {
   value: string;

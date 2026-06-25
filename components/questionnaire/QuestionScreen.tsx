@@ -6,8 +6,10 @@ import { Icon } from "@/components/ui/Icon";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { Question } from "@/lib/flow/types";
-import type { Answers, AnswerValue } from "@/lib/types";
 import type { SelectedOrder } from "@/lib/shopify/types";
+import type { Contact } from "@/lib/storage/types";
+import type { Answers, AnswerValue } from "@/lib/types";
+import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 import { MultiSelect } from "./inputs/MultiSelect";
 import { ShopifyLookup } from "./inputs/ShopifyLookup";
 import { SingleSelect } from "./inputs/SingleSelect";
@@ -26,6 +28,8 @@ export function QuestionScreen({
   onContinue,
   selectedOrder,
   onSelectOrder,
+  contact,
+  onContact,
 }: {
   question: Question;
   answers: Answers;
@@ -38,6 +42,8 @@ export function QuestionScreen({
   onContinue: () => void;
   selectedOrder: SelectedOrder | null;
   onSelectOrder: (sel: SelectedOrder | null) => void;
+  contact: Contact | null;
+  onContact: (c: Contact) => void;
 }) {
   const value = answers[question.id];
 
@@ -112,6 +118,16 @@ export function QuestionScreen({
                   ? `${sel.orderName} — ${sel.product.title}${sel.product.sku ? ` (SKU ${sel.product.sku})` : ""}`
                   : "",
               );
+            }}
+          />
+        )}
+        {question.type === "contact" && (
+          <ContactForm
+            value={contact}
+            onChange={(c) => {
+              onContact(c);
+              const valid = c.name.trim().length > 0 && isValidEmail(c.email);
+              onChange(question.id, valid ? c.email.trim() : "");
             }}
           />
         )}

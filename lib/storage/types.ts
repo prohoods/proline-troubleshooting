@@ -9,6 +9,13 @@ export interface RunFeedback {
   comment?: string;
 }
 
+/** Customer contact details — from Shopify (order path) or collected (no-order). */
+export interface Contact {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 export interface RunAnswer {
   questionId: string;
   prompt: string;
@@ -27,6 +34,7 @@ export interface RunRecord {
   branchKey?: string;
   pathValue?: string;
   order?: SelectedOrder; // selected Shopify order + product, if looked up
+  contact?: Contact; // customer contact for the support ticket
   answers: RunAnswer[];
   diagnoses: RunDiagnosis[];
   feedback?: RunFeedback;

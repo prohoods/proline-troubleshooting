@@ -97,6 +97,9 @@ export function collectAnswers(
 ): AnswerRecord[] {
   const out: AnswerRecord[] = [];
   for (const q of buildSteps(flow, answers)) {
+    // Contact details are persisted structurally (RunRecord.contact), and kept
+    // out of the answers list / AI transcript so PII isn't sent to the LLM.
+    if (q.type === "contact") continue;
     const v = answers[q.id];
     if (!isEmpty(v)) out.push({ questionId: q.id, prompt: q.prompt, value: v! });
     if (q.followUp) {
