@@ -126,10 +126,13 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, id: record.id, pdfUrl: record.pdfUrl });
 }
 
-// Health probe — confirms which stores are wired in this deployment (no data).
+// Health probe — confirms which stores are wired (env var NAMES only, no values).
 export function GET() {
+  const keys = Object.keys(process.env);
   return NextResponse.json({
     postgres: postgresConfigured(),
     blob: blobConfigured(),
+    blobEnv: keys.filter((k) => k.includes("BLOB")),
+    dbEnv: keys.filter((k) => /POSTGRES|DATABASE/.test(k)),
   });
 }
