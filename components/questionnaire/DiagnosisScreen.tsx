@@ -140,6 +140,7 @@ export function DiagnosisScreen({
   const [submitted, setSubmitted] = useState(false);
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const copySummary = async () => {
     const text = buildSummary(
@@ -156,6 +157,55 @@ export function DiagnosisScreen({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard may be blocked (e.g. non-secure context) — no-op.
+    }
+  };
+
+  const downloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        order: order
+          ? {
+              orderName: order.orderName,
+              processedAt: order.processedAt,
+              fulfillmentStatus: order.fulfillmentStatus,
+              product: { title: order.product.title, sku: order.product.sku },
+            }
+          : null,
+        contact,
+        spec: spec ? { model: spec.model, pdfUrl: spec.pdfUrl } : null,
+        answers: answers
+          .filter((a) => a.questionId !== "p_order_lookup")
+          .map((a) => ({ prompt: a.prompt, value: a.value })),
+        diagnoses: result.diagnoses.map((d) => ({
+          title: d.title,
+          summary: d.summary,
+          steps: d.steps,
+          partsTools: d.partsTools,
+          escalation: d.escalation,
+        })),
+        notes: notes.trim() || undefined,
+      };
+      const res = await fetch("/api/run-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("pdf failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `proline-troubleshooting-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // no-op; the agent can retry
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -218,6 +268,15 @@ export function DiagnosisScreen({
         >
           <Icon name={copied ? "check" : "copy"} className="h-4 w-4" />
           {copied ? "Copied" : "Copy summary"}
+        </button>
+        <button
+          type="button"
+          onClick={downloadPdf}
+          disabled={pdfLoading}
+          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink disabled:opacity-50"
+        >
+          <Icon name="download" className="h-4 w-4" />
+          {pdfLoading ? "Preparing…" : "Download PDF"}
         </button>
       </div>
 
