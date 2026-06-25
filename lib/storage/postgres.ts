@@ -1,19 +1,31 @@
-// Some Vercel/Neon integrations expose the connection as DATABASE_URL rather
-// than POSTGRES_URL (which @vercel/postgres reads). Normalize before importing.
-if (!process.env.POSTGRES_URL && process.env.DATABASE_URL) {
-  process.env.POSTGRES_URL = process.env.DATABASE_URL;
+import { neon } from "@neondatabase/serverless";
+import type {
+  RunRecord,
+  StorageAdapter,
+  StoredAnswer,
+  StoredDiagnosis,
+} from "./types";
+
+// Neon (via the Vercel integration) exposes the pooled connection as DATABASE_URL.
+const CONNECTION = process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
+
+export const postgresConfigured = (): boolean => Boolean(CONNECTION);
+
+// Lazily create the client so importing this module never requires the env var —
+// the in-memory fallback must keep working without a database.
+let client: ReturnType<typeof neon> | null = null;
+function db(): ReturnType<typeof neon> {
+  if (!client) {
+    if (!CONNECTION) throw new Error("DATABASE_URL is not set");
+    client = neon(CONNECTION);
+  }
+  return client;
 }
 
-import { sql } from "@vercel/postgres";
-import type { RunRecord, StorageAdapter, StoredAnswer, StoredDiagnosis } from "./types";
-
-export const postgresConfigured = (): boolean =>
-  Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
-
-let ensured: Promise<void> | null = null;
-function ensureTable(): Promise<void> {
+let ensured: Promise<unknown> | null = null;
+function ensureTable(): Promise<unknown> {
   if (!ensured) {
-    ensured = sql`
+    ensured = db()`
       CREATE TABLE IF NOT EXISTS runs (
         id           text PRIMARY KEY,
         created_at   timestamptz NOT NULL,
@@ -30,7 +42,7 @@ function ensureTable(): Promise<void> {
         agent_notes  text,
         pdf_url      text
       )
-    `.then(() => undefined);
+    `;
   }
   return ensured;
 }
@@ -64,7 +76,9 @@ const toRecord = (r: Row): RunRecord => ({
   answers: r.answers ?? [],
   diagnoses: r.diagnoses ?? [],
   feedback:
-    r.rating != null ? { rating: r.rating, comment: r.comment ?? undefined } : undefined,
+    r.rating != null
+      ? { rating: r.rating, comment: r.comment ?? undefined }
+      : undefined,
   agentNotes: r.agent_notes ?? undefined,
   pdfUrl: r.pdf_url ?? undefined,
 });
@@ -72,7 +86,7 @@ const toRecord = (r: Row): RunRecord => ({
 export const postgresStorage: StorageAdapter = {
   async saveRun(r: RunRecord): Promise<void> {
     await ensureTable();
-    await sql`
+    await db()`
       INSERT INTO runs (
         id, created_at, category, branch_key, path_value, model,
         order_json, contact_json, answers, diagnoses,
@@ -93,9 +107,9 @@ export const postgresStorage: StorageAdapter = {
 
   async listRuns(): Promise<RunRecord[]> {
     await ensureTable();
-    const { rows } = await sql<Row>`
+    const rows = (await db()`
       SELECT * FROM runs ORDER BY created_at DESC LIMIT 500
-    `;
+    `) as unknown as Row[];
     return rows.map(toRecord);
   },
 };
