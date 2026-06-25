@@ -5,6 +5,7 @@ import { getLogoBuffer } from "@/lib/pdf/logo";
 import { buildRunPdf, type RunPdfData } from "@/lib/pdf/runPdf";
 import { storage } from "@/lib/storage";
 import { blobConfigured, uploadRunPdf } from "@/lib/storage/blob";
+import { postgresConfigured } from "@/lib/storage/postgres";
 import type {
   RunRecord,
   StoredAnswer,
@@ -123,4 +124,12 @@ export async function POST(request: Request) {
   // OUT OF SCOPE (#4): notifyTicketSystem(record) — see lib/storage/index.ts.
 
   return NextResponse.json({ ok: true, id: record.id, pdfUrl: record.pdfUrl });
+}
+
+// Health probe — confirms which stores are wired in this deployment (no data).
+export function GET() {
+  return NextResponse.json({
+    postgres: postgresConfigured(),
+    blob: blobConfigured(),
+  });
 }
