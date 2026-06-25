@@ -102,6 +102,8 @@ export function ShopifyLookup({
       orderName: order.name,
       processedAt: order.processedAt,
       fulfillmentStatus: order.fulfillmentStatus,
+      email: order.email,
+      customerName: order.customerName,
       product,
     });
 
@@ -179,8 +181,8 @@ export function ShopifyLookup({
                     {formatStatus(order.fulfillmentStatus)}
                   </span>
                 )}
-                {order.customerFirstName && (
-                  <span className="text-muted">· {order.customerFirstName}</span>
+                {order.customerName && (
+                  <span className="text-muted">· {order.customerName}</span>
                 )}
               </div>
 

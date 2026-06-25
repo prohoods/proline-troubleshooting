@@ -14,7 +14,8 @@ export interface OrderSummary {
   name: string; // e.g. "#1001"
   processedAt: string | null;
   fulfillmentStatus: string | null;
-  customerFirstName: string | null;
+  email: string | null;
+  customerName: string | null;
   products: OrderProduct[];
 }
 
@@ -24,5 +25,7 @@ export interface SelectedOrder {
   orderName: string;
   processedAt: string | null;
   fulfillmentStatus: string | null;
+  email: string | null;
+  customerName: string | null;
   product: OrderProduct;
 }

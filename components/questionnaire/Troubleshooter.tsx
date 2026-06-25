@@ -73,6 +73,18 @@ export function Troubleshooter() {
     [flow, answers],
   );
 
+  // Contact for the ticket: the manually-entered one, else derived from the
+  // Shopify order (email + name) so order-path customers are never asked.
+  const effectiveContact = useMemo<Contact | null>(() => {
+    if (contact) return contact;
+    if (selectedOrder?.email)
+      return {
+        name: selectedOrder.customerName ?? "",
+        email: selectedOrder.email,
+      };
+    return null;
+  }, [contact, selectedOrder]);
+
   const setAnswer = (id: string, value: AnswerValue) =>
     setAnswers((prev) => ({ ...prev, [id]: value }));
 
@@ -155,7 +167,7 @@ export function Troubleshooter() {
       branchKey: diagnosis.branchKey,
       pathValue: diagnosis.pathValue,
       order: selectedOrder ?? undefined,
-      contact: contact ?? undefined,
+      contact: effectiveContact ?? undefined,
       answers: collectAnswers(flow, answers),
       diagnoses: shownDiagnoses.map((d) => ({ id: d.id, title: d.title })),
       feedback,
@@ -246,7 +258,7 @@ export function Troubleshooter() {
           order={selectedOrder}
           answers={displayAnswers}
           spec={spec}
-          contact={contact}
+          contact={effectiveContact}
           onSubmitFeedback={submitFeedback}
           onRestart={restart}
         />

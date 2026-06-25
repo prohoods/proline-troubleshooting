@@ -12,6 +12,8 @@ const ORDERS_QUERY = `
           name
           processedAt
           displayFulfillmentStatus
+          email
+          customer { firstName lastName }
           lineItems(first: 25) {
             edges {
               node {
@@ -37,6 +39,8 @@ interface RawOrders {
         name: string;
         processedAt: string | null;
         displayFulfillmentStatus: string | null;
+        email: string | null;
+        customer: { firstName: string | null; lastName: string | null } | null;
         lineItems: {
           edges: {
             node: {
@@ -55,6 +59,11 @@ interface RawOrders {
 
 // Escape quotes/backslashes in the Shopify search string.
 const esc = (v: string) => v.replace(/["\\]/g, "\\$&");
+
+const fullName = (
+  c: { firstName: string | null; lastName: string | null } | null,
+): string | null =>
+  c ? [c.firstName, c.lastName].filter(Boolean).join(" ") || null : null;
 
 /**
  * Look up orders by a single identifier: an email (contains "@") or an order
@@ -75,7 +84,8 @@ export async function lookupOrders(identifier: string): Promise<OrderSummary[]> 
     name: node.name,
     processedAt: node.processedAt,
     fulfillmentStatus: node.displayFulfillmentStatus,
-    customerFirstName: null,
+    email: node.email ?? null,
+    customerName: fullName(node.customer),
     products: node.lineItems.edges.map(({ node: li }) => ({
       lineItemId: li.id,
       title: li.title,
