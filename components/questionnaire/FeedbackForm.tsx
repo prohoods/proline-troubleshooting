@@ -67,9 +67,10 @@ export function FeedbackForm({
 
   return (
     <div>
-      <h3 className="text-lg font-bold text-ink">How well did this work?</h3>
+      <h3 className="text-lg font-bold text-ink">Rate this diagnosis</h3>
       <p className="mt-1 text-sm text-muted">
-        Think about how clearly we asked, and how helpful the diagnosis was.
+        Agent feedback: how accurate and helpful was this result? It measures the
+        tool and trains better answers over time.
       </p>
 
       <div
@@ -106,7 +107,7 @@ export function FeedbackForm({
         aria-label="Additional comments"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Anything we could do better? (optional)"
+        placeholder="What was off, or anything to add for the knowledge base? (optional)"
         className="mt-4 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
       />
 
@@ -114,7 +115,7 @@ export function FeedbackForm({
 
       <div className="mt-4">
         <Button onClick={submit} disabled={submitting}>
-          {submitting ? "Saving…" : "Submit feedback"}
+          {submitting ? "Saving…" : "Submit rating"}
         </Button>
       </div>
     </div>

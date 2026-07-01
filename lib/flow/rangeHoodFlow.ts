@@ -67,8 +67,15 @@ export const rangeHoodFlow: CategoryFlow = {
       placeholder: "Order number (e.g. 1024) or email",
     },
     // Manual fallback: shown only when the customer can't find their order (e.g.
-    // it predates the Shopify migration). A found order gives us the model and
-    // purchase date, so these are skipped on that path.
+    // it predates the Shopify migration). A found order gives us the model,
+    // purchase date, and email, so these are all skipped on that path. Contact
+    // comes first so we always capture how to reach them.
+    {
+      id: CONTACT_QUESTION_ID,
+      prompt: "How can we reach you?",
+      type: "contact",
+      visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
+    },
     {
       id: "p_hood_model",
       prompt: "Which Proline hood do you have?",
@@ -88,12 +95,6 @@ export const rangeHoodFlow: CategoryFlow = {
         "More than 5 years",
         "Unsure",
       ),
-      visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
-    },
-    {
-      id: CONTACT_QUESTION_ID,
-      prompt: "How can we reach you?",
-      type: "contact",
       visibleWhen: { questionId: "p_order_lookup", equals: [NO_ORDER_VALUE] },
     },
   ],
@@ -210,14 +211,6 @@ export const rangeHoodFlow: CategoryFlow = {
               prompt: "What is the width of the cooking surface?",
               type: "multi",
               options: o('24"', '30"', '36"', '48"', '60"', "Other"),
-            },
-            {
-              id: "hp_in_q12",
-              legacyLabel: "QUESTION 12",
-              prompt: "What Proline hood model is installed?",
-              type: "text",
-              optional: true,
-              placeholder: "e.g. PLJW 104",
             },
             {
               id: "hp_in_q13",
@@ -411,14 +404,6 @@ export const rangeHoodFlow: CategoryFlow = {
               prompt: "What is the width of the primary cooking appliance?",
               type: "multi",
               options: o('30"', '32"', '36"', '42"', '48"', '54"', '60"+', "Other"),
-            },
-            {
-              id: "hp_out_q12",
-              legacyLabel: "QUESTION 12",
-              prompt: "What Proline hood model is installed?",
-              type: "text",
-              optional: true,
-              placeholder: "e.g. PLJI 102",
             },
             {
               id: "hp_out_q13",

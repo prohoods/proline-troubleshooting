@@ -314,12 +314,10 @@ export function DiagnosisScreen({
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky text-white">
                 <Icon name="check" className="h-4 w-4" strokeWidth={3} />
               </span>
-              <h3 className="text-lg font-bold text-ink">
-                Thanks for the feedback.
-              </h3>
+              <h3 className="text-lg font-bold text-ink">Rating saved.</h3>
             </div>
             <p className="mt-2 text-sm text-muted">
-              It helps us make this guide better.
+              Thanks — this trains the tool and feeds the knowledge base.
             </p>
             <button
               type="button"
