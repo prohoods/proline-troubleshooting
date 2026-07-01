@@ -11,6 +11,7 @@ import type { SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
 import { FeedbackForm } from "./FeedbackForm";
+import { type CaseDefaults, SupportCaseForm } from "./SupportCaseForm";
 
 function DiagnosisCard({ d }: { d: Diagnosis }) {
   const [open, setOpen] = useState(false);
@@ -123,6 +124,7 @@ export function DiagnosisScreen({
   contact,
   answers,
   spec,
+  photos,
   onSubmitFeedback,
   onRestart,
 }: {
@@ -131,6 +133,7 @@ export function DiagnosisScreen({
   contact: Contact | null;
   answers: AnswerRecord[];
   spec: SpecMatch | null;
+  photos: File[];
   onSubmitFeedback: (
     feedback: RunFeedback,
     agentNotes?: string,
@@ -225,6 +228,34 @@ export function DiagnosisScreen({
       ? "Entered manually"
       : "";
 
+  const describeAnswer = answers.find((a) =>
+    a.prompt.toLowerCase().startsWith("please describe"),
+  );
+  const modelAnswer = answers.find((a) =>
+    a.prompt.toLowerCase().startsWith("which proline hood"),
+  );
+  const caseDefaults: CaseDefaults = {
+    name: contact?.name ?? "",
+    email: contact?.email ?? "",
+    phone: contact?.phone ?? "",
+    message:
+      typeof describeAnswer?.value === "string" ? describeAnswer.value : "",
+    model:
+      spec?.model ||
+      (typeof modelAnswer?.value === "string" ? modelAnswer.value : "") ||
+      order?.product.sku ||
+      "",
+    orderNumber: order?.orderName?.replace(/^#/, "") ?? "",
+    troubleshootingSummary: buildSummary(
+      order,
+      null,
+      answers,
+      result.diagnoses,
+      spec,
+      notes,
+    ),
+  };
+
   return (
     <section className="py-2">
       <Eyebrow>Possible causes</Eyebrow>
@@ -305,6 +336,10 @@ export function DiagnosisScreen({
         <p className="mt-1.5 text-xs text-muted">
           Included in the copied summary and saved with this run.
         </p>
+      </div>
+
+      <div className="mt-8">
+        <SupportCaseForm defaults={caseDefaults} initialPhotos={photos} />
       </div>
 
       <div className="mt-10 border-t border-line pt-8">

@@ -30,6 +30,8 @@ export function QuestionScreen({
   onSelectOrder,
   contact,
   onContact,
+  uploadFilesFor,
+  onUploadFiles,
 }: {
   question: Question;
   answers: Answers;
@@ -44,6 +46,8 @@ export function QuestionScreen({
   onSelectOrder: (sel: SelectedOrder | null) => void;
   contact: Contact | null;
   onContact: (c: Contact) => void;
+  uploadFilesFor: (id: string) => File[];
+  onUploadFiles: (id: string, files: File[]) => void;
 }) {
   const value = answers[question.id];
 
@@ -99,6 +103,8 @@ export function QuestionScreen({
             value={Array.isArray(value) ? value : []}
             options={question.options}
             onChange={(v) => onChange(question.id, v)}
+            files={uploadFilesFor(question.id)}
+            onFilesChange={(f) => onUploadFiles(question.id, f)}
           />
         )}
         {question.type === "lookup" && (

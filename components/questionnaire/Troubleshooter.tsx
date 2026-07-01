@@ -31,6 +31,9 @@ export function Troubleshooter() {
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null);
   const [contact, setContact] = useState<Contact | null>(null);
+  // Real photo files captured in the flow, keyed by upload-question id — attached
+  // to the support case at the end.
+  const [uploadFiles, setUploadFiles] = useState<Record<string, File[]>>({});
   // AI-tailored diagnosis: null until fetched; stays null to fall back to the
   // deterministic diagnoses when the LLM is unconfigured or the call fails.
   const [aiDiagnoses, setAiDiagnoses] = useState<Diagnosis[] | null>(null);
@@ -85,6 +88,9 @@ export function Troubleshooter() {
     return null;
   }, [contact, selectedOrder]);
 
+  // All photos captured across the flow, for the support case.
+  const photos = useMemo(() => Object.values(uploadFiles).flat(), [uploadFiles]);
+
   const setAnswer = (id: string, value: AnswerValue) =>
     setAnswers((prev) => ({ ...prev, [id]: value }));
 
@@ -93,6 +99,7 @@ export function Troubleshooter() {
     setStepIndex(0);
     setSelectedOrder(null);
     setContact(null);
+    setUploadFiles({});
     setAiDiagnoses(null);
     setAiLoading(false);
   };
@@ -237,6 +244,10 @@ export function Troubleshooter() {
         onSelectOrder={setSelectedOrder}
         contact={contact}
         onContact={setContact}
+        uploadFilesFor={(id) => uploadFiles[id] ?? []}
+        onUploadFiles={(id, files) =>
+          setUploadFiles((prev) => ({ ...prev, [id]: files }))
+        }
       />
     );
   }
@@ -268,6 +279,7 @@ export function Troubleshooter() {
           answers={displayAnswers}
           spec={spec}
           contact={effectiveContact}
+          photos={photos}
           onSubmitFeedback={submitFeedback}
           onRestart={restart}
         />

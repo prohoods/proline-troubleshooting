@@ -4,27 +4,34 @@ import { useRef } from "react";
 import type { Option } from "@/lib/flow/types";
 
 /**
- * Upload UI is stubbed for v1 (decision: capture intent, not binaries). We record
- * the chosen filenames so the run is complete; wiring real storage later (e.g.
- * Vercel Blob) means swapping the onChange handler — the rest stays the same.
+ * Photo/video picker. Holds the actual File objects (lifted via onFilesChange so
+ * they can be attached to a support case at the end) and mirrors the filenames
+ * into the run answer via onChange.
  */
 export function UploadStub({
-  value = [],
-  onChange,
   options,
+  files = [],
+  onFilesChange,
+  onChange,
 }: {
-  value?: string[];
-  onChange: (value: string[]) => void;
   options?: Option[];
+  value?: string[];
+  files?: File[];
+  onFilesChange?: (files: File[]) => void;
+  onChange: (value: string[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = (files: FileList | null) => {
-    if (!files?.length) return;
-    onChange([...value, ...Array.from(files).map((f) => f.name)]);
+  const commit = (next: File[]) => {
+    onFilesChange?.(next);
+    onChange(next.map((f) => f.name));
   };
-  const removeAt = (i: number) =>
-    onChange(value.filter((_, idx) => idx !== i));
+  const addFiles = (list: FileList | null) => {
+    if (!list?.length) return;
+    commit([...files, ...Array.from(list)]);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+  const removeAt = (i: number) => commit(files.filter((_, idx) => idx !== i));
 
   return (
     <div>
@@ -46,8 +53,7 @@ export function UploadStub({
       >
         <span className="font-semibold text-ink">Choose photos or video</span>
         <span className="text-xs text-muted">
-          Files aren&apos;t uploaded in this version — we just note the filenames
-          for now.
+          Photos are attached when you create a support case.
         </span>
       </button>
       <input
@@ -59,17 +65,17 @@ export function UploadStub({
         onChange={(e) => addFiles(e.target.files)}
       />
 
-      {value.length > 0 && (
+      {files.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-2">
-          {value.map((name, i) => (
+          {files.map((f, i) => (
             <li
-              key={`${name}-${i}`}
+              key={`${f.name}-${i}`}
               className="inline-flex items-center gap-2 rounded-full bg-sky-soft px-3 py-1 text-sm text-ink"
             >
-              <span className="max-w-[14rem] truncate">{name}</span>
+              <span className="max-w-[14rem] truncate">{f.name}</span>
               <button
                 type="button"
-                aria-label={`Remove ${name}`}
+                aria-label={`Remove ${f.name}`}
                 onClick={() => removeAt(i)}
                 className="text-muted hover:text-ink"
               >
