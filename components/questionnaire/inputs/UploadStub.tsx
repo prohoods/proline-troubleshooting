@@ -53,7 +53,7 @@ export function UploadStub({
       >
         <span className="font-semibold text-ink">Choose photos or video</span>
         <span className="text-xs text-muted">
-          Photos are attached when you create a support case.
+          Photos attach to the support case; video is noted but not attached.
         </span>
       </button>
       <input

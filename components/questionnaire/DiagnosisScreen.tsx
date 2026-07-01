@@ -228,9 +228,17 @@ export function DiagnosisScreen({
       ? "Entered manually"
       : "";
 
-  const describeAnswer = answers.find((a) =>
-    a.prompt.toLowerCase().startsWith("please describe"),
-  );
+  // Pull the customer's own description(s) — matches both "Please describe the
+  // issue." and the path-level "Please briefly describe the issue."
+  const describeText = answers
+    .filter(
+      (a) =>
+        a.prompt.toLowerCase().includes("describe the issue") &&
+        typeof a.value === "string" &&
+        a.value.trim(),
+    )
+    .map((a) => a.value as string)
+    .join("\n\n");
   const modelAnswer = answers.find((a) =>
     a.prompt.toLowerCase().startsWith("which proline hood"),
   );
@@ -238,8 +246,7 @@ export function DiagnosisScreen({
     name: contact?.name ?? "",
     email: contact?.email ?? "",
     phone: contact?.phone ?? "",
-    message:
-      typeof describeAnswer?.value === "string" ? describeAnswer.value : "",
+    message: describeText,
     model:
       spec?.model ||
       (typeof modelAnswer?.value === "string" ? modelAnswer.value : "") ||

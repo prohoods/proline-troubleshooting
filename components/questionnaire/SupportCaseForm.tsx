@@ -47,12 +47,22 @@ export function SupportCaseForm({
   const [orderNumber, setOrderNumber] = useState(defaults.orderNumber);
   const [photos, setPhotos] = useState<File[]>(() =>
     initialPhotos
-      .filter((f) => IMAGE_TYPES.has(f.type) && f.size <= MAX_IMAGE_BYTES)
+      .filter(
+        (f) => IMAGE_TYPES.has(f.type) && f.size > 0 && f.size <= MAX_IMAGE_BYTES,
+      )
       .slice(0, MAX_IMAGES),
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(() => {
+    const kept = initialPhotos.filter(
+      (f) => IMAGE_TYPES.has(f.type) && f.size > 0 && f.size <= MAX_IMAGE_BYTES,
+    );
+    const dropped = initialPhotos.length - Math.min(kept.length, MAX_IMAGES);
+    return dropped > 0
+      ? `${dropped} attachment${dropped > 1 ? "s" : ""} from the questionnaire couldn't be attached — images only, up to ${MAX_IMAGES}, 10 MB each (videos aren't attached).`
+      : null;
+  });
   const [result, setResult] = useState<{
     caseId: number;
     attachedImages: number;
@@ -69,7 +79,7 @@ export function SupportCaseForm({
         skipped++;
         continue;
       }
-      if (!IMAGE_TYPES.has(f.type) || f.size > MAX_IMAGE_BYTES) {
+      if (!IMAGE_TYPES.has(f.type) || f.size === 0 || f.size > MAX_IMAGE_BYTES) {
         skipped++;
         continue;
       }
@@ -103,6 +113,10 @@ export function SupportCaseForm({
       fd.set("name", name.trim());
       fd.set("email", email.trim());
       fd.set("message", message.trim());
+      fd.set(
+        "subject",
+        `Range hood troubleshooting${model.trim() ? ` — ${model.trim()}` : ""}`,
+      );
       if (phone.trim()) fd.set("phone", phone.trim());
       if (model.trim()) fd.set("model", model.trim());
       if (serial.trim()) fd.set("serialNumber", serial.trim());

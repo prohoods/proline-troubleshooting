@@ -5,10 +5,12 @@
 
 const MAX_DIM = 2000; // longest edge, px
 const RESIZE_ABOVE_BYTES = 1.5 * 1024 * 1024;
-const RESIZABLE = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export async function downscaleImage(file: File): Promise<File> {
-  if (!RESIZABLE.has(file.type) || file.size <= RESIZE_ABOVE_BYTES) return file;
+  // Attempt any image over the threshold; types the browser can't decode (e.g.
+  // HEIC in most browsers) throw in createImageBitmap and fall back to original.
+  if (!file.type.startsWith("image/") || file.size <= RESIZE_ABOVE_BYTES)
+    return file;
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
