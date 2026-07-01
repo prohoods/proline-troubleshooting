@@ -147,3 +147,10 @@ export async function POST(request: Request) {
   console.error(`[support] upstream ${res.status}: ${detail}`);
   return fail("Couldn't submit the case. Please try again.", 502);
 }
+
+// Health probe — whether the support key is wired (no data, no upstream call).
+export function GET() {
+  return NextResponse.json({
+    configured: Boolean(process.env.PROLINE_SUPPORT_API_KEY),
+  });
+}
