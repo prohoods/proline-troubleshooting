@@ -1,5 +1,6 @@
 import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { Diagnosis, Likelihood } from "@/lib/diagnoses/types";
+import { FIELD_KNOWLEDGE } from "@/lib/knowledge/fieldKnowledge";
 import { findSpec } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { RunAnswer } from "@/lib/storage/types";
@@ -41,7 +42,9 @@ OUTPUT — respond with ONLY a JSON object, no prose outside it, in exactly this
       "escalation": "When to stop and contact Proline support."
     }
   ]
-}`;
+}
+
+${FIELD_KNOWLEDGE}`;
 
 interface RawDx {
   title?: unknown;
