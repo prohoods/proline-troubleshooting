@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
+import { aiConfigured } from "@/lib/ai/openai";
+import type { Diagnosis } from "@/lib/diagnoses/types";
+import type { RunAnswer } from "@/lib/storage/types";
 import type {
   SupportApiSuccess,
   SupportCaseRequest,
@@ -8,7 +12,13 @@ import type {
 // Server-side only: the X-Api-Key never reaches the browser. The client POSTs a
 // multipart form here; we validate, base64-encode photos, and forward JSON to
 // the Proline support API with the key attached.
+//
+// Customer-mode submissions also carry a `runContext` field (the completed
+// run, same shape as the /api/diagnose body). The customer never sees an AI
+// answer — we run the AI pre-diagnosis here, at ticket time, and append it to
+// the troubleshooting summary so it lands in front of the agent in Stopgap.
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const SUPPORT_URL =
   process.env.PROLINE_SUPPORT_API_URL ||
@@ -43,6 +53,71 @@ function rateLimited(ip: string): boolean {
 
 const fail = (error: string, status: number) =>
   NextResponse.json({ ok: false, error }, { status });
+
+// ---- AI pre-diagnosis (agent-facing, best-effort) ---------------------------
+// Never blocks the ticket: any parse/AI/timeout failure just means the case is
+// submitted without the AI section.
+const AI_TIMEOUT_MS = 25_000;
+
+function parseRunContext(raw: string): DiagnoseContext | null {
+  try {
+    const body = JSON.parse(raw) as Partial<DiagnoseContext>;
+    if (typeof body.category !== "string" || !Array.isArray(body.answers)) {
+      return null;
+    }
+    return {
+      category: body.category,
+      branchKey: typeof body.branchKey === "string" ? body.branchKey : undefined,
+      pathValue: typeof body.pathValue === "string" ? body.pathValue : undefined,
+      answers: body.answers as RunAnswer[],
+      order: body.order,
+      modelText: typeof body.modelText === "string" ? body.modelText : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatAiSection(diagnoses: Diagnosis[]): string {
+  const L: string[] = [
+    "",
+    "==============================================",
+    "AI PRE-DIAGNOSIS — INTERNAL, FOR THE AGENT",
+    "(Generated when the customer submitted this case.",
+    "The customer saw scripted guidance only, not this.)",
+    "==============================================",
+  ];
+  diagnoses.forEach((d, i) => {
+    L.push(`${i + 1}. ${d.title} [${d.likelihood.replace(/_/g, " ")}]`);
+    L.push(`   ${d.summary}`);
+    if (d.steps.length) L.push(`   Fix: ${d.steps.join(" | ")}`);
+    if (d.partsTools?.length)
+      L.push(`   Parts/tools: ${d.partsTools.join(", ")}`);
+    if (d.escalation) L.push(`   Escalate: ${d.escalation}`);
+  });
+  return L.join("\n");
+}
+
+async function aiSectionFor(raw: string): Promise<string> {
+  if (!aiConfigured()) return "";
+  const ctx = parseRunContext(raw);
+  if (!ctx) return "";
+  try {
+    const diagnoses = await Promise.race([
+      generateDiagnosis(ctx),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("ai_timeout")), AI_TIMEOUT_MS),
+      ),
+    ]);
+    return diagnoses.length ? formatAiSection(diagnoses) : "";
+  } catch (e) {
+    console.error(
+      "[support] AI pre-diagnosis skipped:",
+      e instanceof Error ? e.message : e,
+    );
+    return "";
+  }
+}
 
 export async function POST(request: Request) {
   const ip =
@@ -94,6 +169,14 @@ export async function POST(request: Request) {
     images.push({ base64, fileName: f.name || undefined, contentType });
   }
 
+  // ---- Customer runs: attach the agent-facing AI pre-diagnosis --------------
+  const runContext = str("runContext");
+  let summary = str("troubleshootingSummary");
+  if (runContext) {
+    const aiSection = await aiSectionFor(runContext);
+    if (aiSection) summary = `${summary}\n${aiSection}`.trim();
+  }
+
   const body: SupportCaseRequest = {
     name,
     email,
@@ -103,7 +186,7 @@ export async function POST(request: Request) {
     model: str("model") || undefined,
     serialNumber: str("serialNumber") || undefined,
     orderNumber: str("orderNumber") || undefined,
-    troubleshootingSummary: str("troubleshootingSummary") || undefined,
+    troubleshootingSummary: summary || undefined,
     images: images.length ? images : undefined,
   };
 

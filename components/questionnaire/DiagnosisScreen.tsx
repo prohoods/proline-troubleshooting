@@ -10,7 +10,9 @@ import type { AnswerRecord } from "@/lib/flow/engine";
 import type { SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
+import type { AppMode } from "@/lib/types";
 import { FeedbackForm } from "./FeedbackForm";
+import { SafetyNotice } from "./SafetyNotice";
 import { type CaseDefaults, SupportCaseForm } from "./SupportCaseForm";
 
 function DiagnosisCard({ d }: { d: Diagnosis }) {
@@ -119,21 +121,25 @@ function buildSummary(
 }
 
 export function DiagnosisScreen({
+  mode = "agent",
   result,
   order,
   contact,
   answers,
   spec,
   photos,
+  runContext,
   onSubmitFeedback,
   onRestart,
 }: {
+  mode?: AppMode;
   result: DiagnosisResult;
   order: SelectedOrder | null;
   contact: Contact | null;
   answers: AnswerRecord[];
   spec: SpecMatch | null;
   photos: File[];
+  runContext?: string;
   onSubmitFeedback: (
     feedback: RunFeedback,
     agentNotes?: string,
@@ -144,6 +150,10 @@ export function DiagnosisScreen({
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  // Customer mode: the support form stays tucked away until they say the
+  // fixes didn't work.
+  const [showSupport, setShowSupport] = useState(mode === "agent");
+  const isCustomer = mode === "customer";
 
   const copySummary = async () => {
     const text = buildSummary(
@@ -270,11 +280,12 @@ export function DiagnosisScreen({
         Here&apos;s what we think.
       </h2>
       <p className="mt-3 max-w-xl text-muted">
-        Based on the answers, here are the possible causes. Tap a cause to see
-        the suggested fix.
+        {isCustomer
+          ? "Based on your answers, here are the most likely causes. Tap one to see the suggested fix."
+          : "Based on the answers, here are the possible causes. Tap a cause to see the suggested fix."}
       </p>
 
-      {/* Agent toolbar: product context, spec PDF, copy-to-ticket */}
+      {/* Toolbar: product context, spec PDF, copy-to-ticket (agent only) */}
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-mist/50 p-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">
@@ -299,14 +310,16 @@ export function DiagnosisScreen({
             Spec sheet (PDF) →
           </a>
         )}
-        <button
-          type="button"
-          onClick={copySummary}
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          <Icon name={copied ? "check" : "copy"} className="h-4 w-4" />
-          {copied ? "Copied" : "Copy summary"}
-        </button>
+        {!isCustomer && (
+          <button
+            type="button"
+            onClick={copySummary}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            <Icon name={copied ? "check" : "copy"} className="h-4 w-4" />
+            {copied ? "Copied" : "Copy summary"}
+          </button>
+        )}
         <button
           type="button"
           onClick={downloadPdf}
@@ -318,6 +331,12 @@ export function DiagnosisScreen({
         </button>
       </div>
 
+      {isCustomer && (
+        <div className="mt-6">
+          <SafetyNotice />
+        </div>
+      )}
+
       <div className="mt-7 space-y-3">
         {result.diagnoses.map((d) => (
           <DiagnosisCard key={d.id} d={d} />
@@ -325,28 +344,54 @@ export function DiagnosisScreen({
       </div>
 
       {/* Internal agent notes — included in the copied summary + saved with the run */}
-      <div className="mt-8">
-        <label
-          htmlFor="agent-notes"
-          className="text-xs font-bold uppercase tracking-wide text-muted"
-        >
-          Agent notes (internal)
-        </label>
-        <textarea
-          id="agent-notes"
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notes for the ticket — what you tried, customer sentiment, next steps…"
-          className="mt-2 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
-        />
-        <p className="mt-1.5 text-xs text-muted">
-          Included in the copied summary and saved with this run.
-        </p>
-      </div>
+      {!isCustomer && (
+        <div className="mt-8">
+          <label
+            htmlFor="agent-notes"
+            className="text-xs font-bold uppercase tracking-wide text-muted"
+          >
+            Agent notes (internal)
+          </label>
+          <textarea
+            id="agent-notes"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notes for the ticket — what you tried, customer sentiment, next steps…"
+            className="mt-2 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
+          />
+          <p className="mt-1.5 text-xs text-muted">
+            Included in the copied summary and saved with this run.
+          </p>
+        </div>
+      )}
 
       <div className="mt-8">
-        <SupportCaseForm defaults={caseDefaults} initialPhotos={photos} />
+        {showSupport ? (
+          <SupportCaseForm
+            mode={mode}
+            defaults={caseDefaults}
+            initialPhotos={photos}
+            runContext={runContext}
+          />
+        ) : (
+          <div className="rounded-2xl border border-line bg-mist/50 p-6">
+            <h3 className="text-lg font-bold text-ink">Still not fixed?</h3>
+            <p className="mt-1 text-sm text-muted">
+              No problem — send this straight to our support team. Everything
+              you&apos;ve answered goes with it, so you won&apos;t have to
+              repeat yourself.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSupport(true)}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              Contact Proline support
+              <Icon name="arrowRight" className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-10 border-t border-line pt-8">
@@ -359,7 +404,9 @@ export function DiagnosisScreen({
               <h3 className="text-lg font-bold text-ink">Rating saved.</h3>
             </div>
             <p className="mt-2 text-sm text-muted">
-              Thanks — this trains the tool and feeds the knowledge base.
+              {isCustomer
+                ? "Thanks — your feedback helps us make this guide better for everyone."
+                : "Thanks — this trains the tool and feeds the knowledge base."}
             </p>
             <button
               type="button"
@@ -373,6 +420,7 @@ export function DiagnosisScreen({
         ) : (
           <>
             <FeedbackForm
+              mode={mode}
               onSubmit={async (fb) => {
                 const r = await onSubmitFeedback(fb, notes);
                 if (r.ok) setSubmitted(true);

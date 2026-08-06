@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { downscaleImage } from "@/lib/images/downscale";
 import type { SupportResult } from "@/lib/support/types";
+import type { AppMode } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IMAGE_TYPES = new Set([
@@ -34,10 +35,16 @@ const FIELD =
 export function SupportCaseForm({
   defaults,
   initialPhotos,
+  mode = "agent",
+  runContext,
 }: {
   defaults: CaseDefaults;
   initialPhotos: File[];
+  mode?: AppMode;
+  /** Customer mode: completed-run context for the server-side AI pre-diagnosis. */
+  runContext?: string;
 }) {
+  const isCustomer = mode === "customer";
   const [name, setName] = useState(defaults.name);
   const [email, setEmail] = useState(defaults.email);
   const [phone, setPhone] = useState(defaults.phone);
@@ -123,6 +130,7 @@ export function SupportCaseForm({
       if (orderNumber.trim()) fd.set("orderNumber", orderNumber.trim());
       if (defaults.troubleshootingSummary.trim())
         fd.set("troubleshootingSummary", defaults.troubleshootingSummary.trim());
+      if (runContext) fd.set("runContext", runContext);
       for (const p of processed) fd.append("images", p, p.name);
 
       const res = await fetch("/api/support", { method: "POST", body: fd });
@@ -149,14 +157,18 @@ export function SupportCaseForm({
             <Icon name="check" className="h-4 w-4" strokeWidth={3} />
           </span>
           <h3 className="text-lg font-bold text-ink">
-            Support case #{result.caseId} created.
+            {isCustomer
+              ? `We're on it — case #${result.caseId} is open.`
+              : `Support case #${result.caseId} created.`}
           </h3>
         </div>
         <p className="mt-2 text-sm text-muted">
           {result.attachedImages > 0
             ? `${result.attachedImages} photo${result.attachedImages > 1 ? "s" : ""} attached. `
             : ""}
-          The customer&apos;s reply will go to {email.trim()}.
+          {isCustomer
+            ? `Our support team has everything you told us and will reply to ${email.trim()}.`
+            : `The customer's reply will go to ${email.trim()}.`}
         </p>
       </div>
     );
@@ -164,10 +176,13 @@ export function SupportCaseForm({
 
   return (
     <div className="rounded-2xl border border-line bg-white p-6">
-      <h3 className="text-lg font-bold text-ink">Create support case</h3>
+      <h3 className="text-lg font-bold text-ink">
+        {isCustomer ? "Contact Proline support" : "Create support case"}
+      </h3>
       <p className="mt-1 text-sm text-muted">
-        Opens a case in Stopgap and emails the customer. Review the details,
-        attach any photos, and submit.
+        {isCustomer
+          ? "Check your details, add photos if you have them, and send it over. Everything you answered goes with it — no need to repeat yourself."
+          : "Opens a case in Stopgap and emails the customer. Review the details, attach any photos, and submit."}
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

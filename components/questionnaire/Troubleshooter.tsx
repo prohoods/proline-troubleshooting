@@ -16,7 +16,7 @@ import {
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
-import type { Answers, AnswerValue } from "@/lib/types";
+import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { CategoryScreen } from "./CategoryScreen";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
@@ -24,7 +24,7 @@ import { WelcomeScreen } from "./WelcomeScreen";
 
 type Phase = "welcome" | "category" | "questions" | "diagnosis";
 
-export function Troubleshooter() {
+export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [category, setCategory] = useState<Category | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
@@ -156,13 +156,34 @@ export function Troubleshooter() {
     const nextSteps = buildSteps(flow, answers);
     if (current.terminal && safeIndex + 1 >= nextSteps.length) {
       setPhase("diagnosis");
-      void runDiagnosis();
+      // Customers only ever see the scripted diagnoses — the AI runs
+      // server-side at case-submit time and lands in the agent's ticket.
+      if (mode === "agent") void runDiagnosis();
     } else {
       setStepIndex((i) => i + 1);
     }
   };
 
   const shownDiagnoses = aiDiagnoses ?? diagnosis?.diagnoses ?? [];
+
+  // Customer mode: the completed run's context, sent with a support-case
+  // submission so the server can run the AI pre-diagnosis for the agent.
+  // Mirrors the /api/diagnose request body (DiagnoseContext).
+  const runContext = useMemo(() => {
+    if (mode !== "customer" || !flow || !category) return undefined;
+    return JSON.stringify({
+      category: category.id,
+      branchKey: diagnosis?.branchKey,
+      pathValue: diagnosis?.pathValue,
+      answers: collectAnswers(flow, answers),
+      order: selectedOrder ?? undefined,
+      modelText:
+        answers["p_order_lookup"] === NO_ORDER_VALUE &&
+        typeof answers["p_hood_model"] === "string"
+          ? answers["p_hood_model"]
+          : undefined,
+    });
+  }, [mode, flow, category, diagnosis, answers, selectedOrder]);
 
   const submitFeedback = async (
     feedback: RunFeedback,
@@ -219,7 +240,7 @@ export function Troubleshooter() {
   }
 
   if (phase === "welcome") {
-    return <WelcomeScreen onStart={() => setPhase("category")} />;
+    return <WelcomeScreen mode={mode} onStart={() => setPhase("category")} />;
   }
 
   if (phase === "category") {
@@ -270,6 +291,7 @@ export function Troubleshooter() {
     if (diagnosis && shownDiagnoses.length > 0) {
       return (
         <DiagnosisScreen
+          mode={mode}
           result={{
             branchKey: diagnosis.branchKey,
             pathValue: diagnosis.pathValue,
@@ -280,6 +302,7 @@ export function Troubleshooter() {
           spec={spec}
           contact={effectiveContact}
           photos={photos}
+          runContext={runContext}
           onSubmitFeedback={submitFeedback}
           onRestart={restart}
         />

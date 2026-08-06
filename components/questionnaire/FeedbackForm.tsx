@@ -3,6 +3,7 @@
 import { type KeyboardEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { RunFeedback } from "@/lib/storage/types";
+import type { AppMode } from "@/lib/types";
 
 function Star({ filled }: { filled: boolean }) {
   return (
@@ -20,8 +21,10 @@ function Star({ filled }: { filled: boolean }) {
 
 export function FeedbackForm({
   onSubmit,
+  mode = "agent",
 }: {
   onSubmit: (feedback: RunFeedback) => Promise<{ ok: boolean }>;
+  mode?: AppMode;
 }) {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -67,10 +70,13 @@ export function FeedbackForm({
 
   return (
     <div>
-      <h3 className="text-lg font-bold text-ink">Rate this diagnosis</h3>
+      <h3 className="text-lg font-bold text-ink">
+        {mode === "customer" ? "How did we do?" : "Rate this diagnosis"}
+      </h3>
       <p className="mt-1 text-sm text-muted">
-        Agent feedback: how accurate and helpful was this result? It measures the
-        tool and trains better answers over time.
+        {mode === "customer"
+          ? "How accurate and helpful was this guide? Your rating helps us improve it."
+          : "Agent feedback: how accurate and helpful was this result? It measures the tool and trains better answers over time."}
       </p>
 
       <div
@@ -107,7 +113,11 @@ export function FeedbackForm({
         aria-label="Additional comments"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="What was off, or anything to add for the knowledge base? (optional)"
+        placeholder={
+          mode === "customer"
+            ? "Anything we missed, or that would have helped? (optional)"
+            : "What was off, or anything to add for the knowledge base? (optional)"
+        }
         className="mt-4 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
       />
 
