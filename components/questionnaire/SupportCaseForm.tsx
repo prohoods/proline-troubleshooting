@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { downscaleImage } from "@/lib/images/downscale";
 import type { SupportResult } from "@/lib/support/types";
 import type { AppMode } from "@/lib/types";
+import { apiUrl } from "@/lib/apiBase";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IMAGE_TYPES = new Set([
@@ -133,7 +134,7 @@ export function SupportCaseForm({
       if (runContext) fd.set("runContext", runContext);
       for (const p of processed) fd.append("images", p, p.name);
 
-      const res = await fetch("/api/support", { method: "POST", body: fd });
+      const res = await fetch(apiUrl("/api/support"), { method: "POST", body: fd });
       const json = (await res
         .json()
         .catch(() => ({ ok: false, error: "Unexpected response." }))) as SupportResult;

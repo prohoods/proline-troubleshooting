@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { corsPreflight, withCors } from "@/lib/cors";
 import { findSpec } from "@/lib/knowledge/specSheets";
 import { getLogoBuffer } from "@/lib/pdf/logo";
 import { buildRunPdf, type RunPdfData } from "@/lib/pdf/runPdf";
@@ -43,21 +44,28 @@ function buildPdfData(record: RunRecord): RunPdfData {
   };
 }
 
+export function OPTIONS(request: Request) {
+  return corsPreflight(request);
+}
+
 export async function POST(request: Request) {
   let body: Partial<RunRecord>;
   try {
     body = (await request.json()) as Partial<RunRecord>;
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "Invalid JSON body" },
-      { status: 400 },
+    return withCors(
+      NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 }),
+      request,
     );
   }
 
   if (!body || typeof body !== "object" || !body.category) {
-    return NextResponse.json(
-      { ok: false, error: "Missing required field: category" },
-      { status: 400 },
+    return withCors(
+      NextResponse.json(
+        { ok: false, error: "Missing required field: category" },
+        { status: 400 },
+      ),
+      request,
     );
   }
 
@@ -74,9 +82,12 @@ export async function POST(request: Request) {
       rating < 1 ||
       rating > 5
     ) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid feedback.rating (expected integer 1–5)" },
-        { status: 400 },
+      return withCors(
+        NextResponse.json(
+          { ok: false, error: "Invalid feedback.rating (expected integer 1–5)" },
+          { status: 400 },
+        ),
+        request,
       );
     }
     feedback = {
@@ -118,12 +129,18 @@ export async function POST(request: Request) {
     await storage.saveRun(record);
   } catch (e) {
     console.error("[runs] save failed:", e instanceof Error ? e.message : e);
-    return NextResponse.json({ ok: false, error: "save_failed" }, { status: 500 });
+    return withCors(
+      NextResponse.json({ ok: false, error: "save_failed" }, { status: 500 }),
+      request,
+    );
   }
 
   // OUT OF SCOPE (#4): notifyTicketSystem(record) — see lib/storage/index.ts.
 
-  return NextResponse.json({ ok: true, id: record.id, pdfUrl: record.pdfUrl });
+  return withCors(
+    NextResponse.json({ ok: true, id: record.id, pdfUrl: record.pdfUrl }),
+    request,
+  );
 }
 
 // Health probe — confirms which stores are wired in this deployment (no data).

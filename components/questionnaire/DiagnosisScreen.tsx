@@ -11,6 +11,7 @@ import type { SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
 import type { AppMode } from "@/lib/types";
+import { apiUrl } from "@/lib/apiBase";
 import { FeedbackForm } from "./FeedbackForm";
 import { SafetyNotice } from "./SafetyNotice";
 import { type CaseDefaults, SupportCaseForm } from "./SupportCaseForm";
@@ -200,7 +201,7 @@ export function DiagnosisScreen({
         })),
         notes: notes.trim() || undefined,
       };
-      const res = await fetch("/api/run-pdf", {
+      const res = await fetch(apiUrl("/api/run-pdf"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { apiUrl } from "@/lib/apiBase";
 import type {
   OrderProduct,
   OrderSummary,
@@ -72,7 +73,7 @@ export function ShopifyLookup({
     setOrders(null);
     onSelect(null); // clear any prior selection when re-searching
     try {
-      const res = await fetch("/api/lookup", {
+      const res = await fetch(apiUrl("/api/lookup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: id }),

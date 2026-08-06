@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { corsPreflight, withCors } from "@/lib/cors";
 import { ShopifyError, shopifyConfigured } from "@/lib/shopify/client";
 import { lookupOrders } from "@/lib/shopify/lookup";
 
@@ -23,21 +24,25 @@ function rateLimited(ip: string): boolean {
   return entry.count > MAX_PER_WINDOW;
 }
 
+export function OPTIONS(request: Request) {
+  return corsPreflight(request);
+}
+
 export async function POST(request: Request) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited" },
-      { status: 429 },
+    return withCors(
+      NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 }),
+      request,
     );
   }
 
   // Not configured yet (no env vars) — let the UI show a clear message.
   if (!shopifyConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "not_configured" },
-      { status: 503 },
+    return withCors(
+      NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 }),
+      request,
     );
   }
 
@@ -46,25 +51,31 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { identifier?: unknown };
     if (typeof body.identifier === "string") identifier = body.identifier;
   } catch {
-    return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
+    return withCors(
+      NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 }),
+      request,
+    );
   }
 
   if (!identifier.trim()) {
-    return NextResponse.json(
-      { ok: false, error: "missing_identifier" },
-      { status: 400 },
+    return withCors(
+      NextResponse.json({ ok: false, error: "missing_identifier" }, { status: 400 }),
+      request,
     );
   }
 
   try {
     const orders = await lookupOrders(identifier);
-    return NextResponse.json({ ok: true, orders });
+    return withCors(NextResponse.json({ ok: true, orders }), request);
   } catch (e) {
     // Log the detail server-side (Vercel logs); return a generic error to clients
     // so the host/version/error text isn't exposed publicly.
     const detail = e instanceof ShopifyError ? e.code : "network";
     const message = e instanceof Error ? e.message : String(e);
     console.error("[lookup] failed:", detail, message);
-    return NextResponse.json({ ok: false, error: "upstream" }, { status: 502 });
+    return withCors(
+      NextResponse.json({ ok: false, error: "upstream" }, { status: 502 }),
+      request,
+    );
   }
 }

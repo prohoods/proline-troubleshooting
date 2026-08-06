@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
 import { aiConfigured } from "@/lib/ai/openai";
+import { corsPreflight, withCors } from "@/lib/cors";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import type { RunAnswer } from "@/lib/storage/types";
 import type {
@@ -51,8 +52,9 @@ function rateLimited(ip: string): boolean {
   return entry.count > MAX_PER_WINDOW;
 }
 
-const fail = (error: string, status: number) =>
-  NextResponse.json({ ok: false, error }, { status });
+// Bound to the request so cross-origin (storefront) callers can read the error.
+const failFor = (request: Request) => (error: string, status: number) =>
+  withCors(NextResponse.json({ ok: false, error }, { status }), request);
 
 // ---- AI pre-diagnosis (agent-facing, best-effort) ---------------------------
 // Never blocks the ticket: any parse/AI/timeout failure just means the case is
@@ -119,7 +121,12 @@ async function aiSectionFor(raw: string): Promise<string> {
   }
 }
 
+export function OPTIONS(request: Request) {
+  return corsPreflight(request);
+}
+
 export async function POST(request: Request) {
+  const fail = failFor(request);
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (rateLimited(ip)) {
@@ -209,11 +216,14 @@ export async function POST(request: Request) {
       .json()
       .catch(() => null)) as SupportApiSuccess | null;
     if (data?.Success && typeof data.CaseId === "number") {
-      return NextResponse.json({
-        ok: true,
-        caseId: data.CaseId,
-        attachedImages: data.AttachedImages ?? images.length,
-      });
+      return withCors(
+        NextResponse.json({
+          ok: true,
+          caseId: data.CaseId,
+          attachedImages: data.AttachedImages ?? images.length,
+        }),
+        request,
+      );
     }
     console.error("[support] unexpected 200 body:", JSON.stringify(data));
     return fail("The support system returned an unexpected response.", 502);

@@ -17,6 +17,7 @@ import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue, AppMode } from "@/lib/types";
+import { apiUrl } from "@/lib/apiBase";
 import { CategoryScreen } from "./CategoryScreen";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
@@ -115,7 +116,7 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
     setAiLoading(true);
     setAiDiagnoses(null);
     try {
-      const res = await fetch("/api/diagnose", {
+      const res = await fetch(apiUrl("/api/diagnose"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -211,7 +212,7 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
       agentNotes: agentNotes?.trim() || undefined,
     };
     try {
-      const res = await fetch("/api/runs", {
+      const res = await fetch(apiUrl("/api/runs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
