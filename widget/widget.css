@@ -1,6 +1,25 @@
 @import "tailwindcss";
 
 /*
+ * Tailwind v4 declares its internal --tw-* variables with @property, and
+ * @property registration is DOCUMENT-scoped: the browser ignores it inside a
+ * shadow root. Every one of those variables is therefore unset here, so
+ * utilities compiled as `border-style: var(--tw-border-style)` resolve to
+ * nothing — no border rendered anywhere in the widget, at any width or colour,
+ * and box-shadow utilities silently did nothing too.
+ *
+ * Restating the initial values as plain declarations on every element
+ * reproduces @property's semantics: `*` has zero specificity, so any utility
+ * that sets one of these still wins. Only the variables that @property gives an
+ * initial-value are listed; the rest are guaranteed-invalid by design and their
+ * var() fallbacks already handle that.
+ */
+/* See registerTailwindProperties() in widget/main.tsx — Tailwind's @property
+ * declarations don't apply inside a shadow root, so they're registered against
+ * the document from JS instead. Declaring them here as ordinary rules would
+ * outrank the utility classes that set them and break shadows. */
+
+/*
  * Styles for the storefront-embedded widget.
  *
  * This sheet is injected INSIDE a shadow root, so every rule here — including

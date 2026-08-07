@@ -19,9 +19,59 @@ import css from "./widget.css?inline";
  */
 const MOUNT_ID = "proline-troubleshooter";
 
+/*
+ * Tailwind v4 compiles its utilities against internal --tw-* variables and
+ * declares them with @property. @property registration is DOCUMENT-scoped — the
+ * browser ignores those rules inside a shadow root — so every one of them was
+ * unset here. `border-style: var(--tw-border-style)` resolved to nothing, which
+ * meant NO border rendered anywhere in the widget at any width or colour, and
+ * box-shadow utilities silently did nothing.
+ *
+ * Registering them against the document restores the initial values inside the
+ * shadow tree, because registration is global. Doing the same thing in CSS
+ * wouldn't work: a plain `*` rule outranks the layered utilities that set these
+ * variables, so shadows would break instead.
+ *
+ * Only the variables @property gives an initial-value need this; the rest are
+ * guaranteed-invalid by design and their var() fallbacks already cover it.
+ */
+const TW_PROPERTIES: Array<[name: string, syntax: string, initial: string]> = [
+  ["--tw-border-style", "*", "solid"],
+  ["--tw-space-y-reverse", "*", "0"],
+  ["--tw-shadow", "*", "0 0 #0000"],
+  ["--tw-shadow-alpha", "<percentage>", "100%"],
+  ["--tw-inset-shadow", "*", "0 0 #0000"],
+  ["--tw-inset-shadow-alpha", "<percentage>", "100%"],
+  ["--tw-ring-shadow", "*", "0 0 #0000"],
+  ["--tw-inset-ring-shadow", "*", "0 0 #0000"],
+  ["--tw-ring-offset-shadow", "*", "0 0 #0000"],
+  ["--tw-ring-offset-width", "<length>", "0px"],
+  ["--tw-ring-offset-color", "*", "#fff"],
+  ["--tw-drop-shadow-alpha", "<percentage>", "100%"],
+];
+
+function registerTailwindProperties() {
+  if (typeof CSS === "undefined" || !CSS.registerProperty) return;
+  for (const [name, syntax, initialValue] of TW_PROPERTIES) {
+    try {
+      CSS.registerProperty({
+        name,
+        syntax,
+        inherits: false,
+        initialValue,
+      });
+    } catch {
+      // Already registered (re-mount, or another Tailwind v4 bundle on the
+      // page) — the existing registration is equivalent.
+    }
+  }
+}
+
 function mount() {
   const host = document.getElementById(MOUNT_ID);
   if (!host || host.shadowRoot) return; // missing, or already mounted
+
+  registerTailwindProperties();
 
   const shadow = host.attachShadow({ mode: "open" });
 
