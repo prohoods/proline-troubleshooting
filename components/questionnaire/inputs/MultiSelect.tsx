@@ -32,14 +32,14 @@ export function MultiSelect({
             className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition ${
               selected
                 ? "border-sky bg-sky-soft"
-                : "border-line bg-white hover:border-sky/50"
+                : "border-field bg-white hover:border-sky/50"
             }`}
           >
             <span
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                 selected
                   ? "border-sky bg-sky text-white"
-                  : "border-line text-transparent"
+                  : "border-field text-transparent"
               }`}
             >
               <Icon name="check" className="h-3.5 w-3.5" strokeWidth={3} />

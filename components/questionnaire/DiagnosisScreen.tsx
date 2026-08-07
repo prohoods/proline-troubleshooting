@@ -359,7 +359,7 @@ export function DiagnosisScreen({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes for the ticket — what you tried, customer sentiment, next steps…"
-            className="mt-2 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
+            className="mt-2 w-full resize-y rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
           />
           <p className="mt-1.5 text-xs text-muted">
             Included in the copied summary and saved with this run.

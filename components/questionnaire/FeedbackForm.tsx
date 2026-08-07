@@ -118,7 +118,7 @@ export function FeedbackForm({
             ? "Anything we missed, or that would have helped? (optional)"
             : "What was off, or anything to add for the knowledge base? (optional)"
         }
-        className="mt-4 w-full resize-y rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
+        className="mt-4 w-full resize-y rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
       />
 
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}

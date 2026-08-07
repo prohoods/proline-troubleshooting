@@ -1,7 +1,7 @@
 "use client";
 
 const FIELD =
-  "w-full rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky";
+  "w-full rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky";
 
 export function TextInput({
   value = "",

@@ -31,7 +31,7 @@ export interface CaseDefaults {
 }
 
 const FIELD =
-  "w-full rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky focus:outline-none";
+  "w-full rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky focus:outline-none";
 
 export function SupportCaseForm({
   defaults,
@@ -272,7 +272,7 @@ export function SupportCaseForm({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="w-full rounded-xl border-2 border-dashed border-line bg-white px-4 py-4 text-sm font-semibold text-ink transition hover:border-sky/60"
+          className="w-full rounded-xl border-2 border-dashed border-field bg-white px-4 py-4 text-sm font-semibold text-ink transition hover:border-sky/60"
         >
           + Add photos
         </button>

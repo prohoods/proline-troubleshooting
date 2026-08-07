@@ -6,7 +6,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const isValidEmail = (s: string) => EMAIL_RE.test(s.trim());
 
 const FIELD =
-  "mt-1 w-full rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky focus:outline-none";
+  "mt-1 w-full rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky focus:outline-none";
 
 export function ContactForm({
   value,

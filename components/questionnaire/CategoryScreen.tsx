@@ -50,7 +50,7 @@ export function CategoryScreen({
             key={c.id}
             type="button"
             onClick={() => (c.available ? onPick(c) : setUnavailable(c))}
-            className="group relative flex flex-col items-center gap-4 rounded-2xl border border-line bg-white p-8 text-center transition hover:border-sky hover:shadow-md"
+            className="group relative flex flex-col items-center gap-4 rounded-2xl border border-field bg-white p-8 text-center transition hover:border-sky hover:shadow-md"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

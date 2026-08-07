@@ -146,7 +146,7 @@ export function ShopifyLookup({
               search();
             }
           }}
-          className="w-full rounded-xl border border-line bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
+          className="w-full rounded-xl border border-field bg-white px-4 py-3 text-ink placeholder:text-muted/70 focus:border-sky"
         />
         <button
           type="button"
@@ -199,7 +199,7 @@ export function ShopifyLookup({
                       className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
                         picked
                           ? "border-sky bg-sky-soft"
-                          : "border-line bg-white hover:border-sky/50"
+                          : "border-field bg-white hover:border-sky/50"
                       }`}
                     >
                       <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-mist">
@@ -226,7 +226,7 @@ export function ShopifyLookup({
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                           picked
                             ? "border-sky bg-sky text-white"
-                            : "border-line text-transparent"
+                            : "border-field text-transparent"
                         }`}
                       >
                         <Icon name="check" className="h-3.5 w-3.5" strokeWidth={3} />
