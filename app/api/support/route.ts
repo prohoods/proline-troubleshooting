@@ -197,6 +197,41 @@ export async function POST(request: Request) {
     images: images.length ? images : undefined,
   };
 
+  // ---- Debug capture --------------------------------------------------------
+  // Set SUPPORT_DEBUG_LOG=1 to log the exact JSON forwarded upstream, so a
+  // created case can be matched to the precise request that produced it.
+  // Image bytes are replaced with metadata — the payload is otherwise verbatim.
+  // Off by default: this body carries the customer's name, email, and phone,
+  // which shouldn't sit in runtime logs outside an active investigation.
+  const debugLog = process.env.SUPPORT_DEBUG_LOG === "1";
+  if (debugLog) {
+    const redacted = {
+      ...body,
+      images: body.images?.map((i) => ({
+        fileName: i.fileName,
+        contentType: i.contentType,
+        base64Bytes: i.base64.length,
+        base64: `<${i.base64.length} chars omitted>`,
+      })),
+    };
+    console.log(
+      "[support][debug] REQUEST →",
+      SUPPORT_URL,
+      JSON.stringify(
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Api-Key": "<redacted>",
+          },
+          body: redacted,
+        },
+        null,
+        2,
+      ),
+    );
+  }
+
   // ---- Forward to the Proline support API with the key ----------------------
   let res: Response;
   try {
@@ -216,6 +251,12 @@ export async function POST(request: Request) {
       .json()
       .catch(() => null)) as SupportApiSuccess | null;
     if (data?.Success && typeof data.CaseId === "number") {
+      // Correlates the logged request above with the case it created.
+      if (debugLog) {
+        console.log(
+          `[support][debug] RESPONSE ← CaseId=${data.CaseId} AttachedImages=${data.AttachedImages} name=${JSON.stringify(body.name)} email=${JSON.stringify(body.email)} orderNumber=${JSON.stringify(body.orderNumber ?? null)}`,
+        );
+      }
       return withCors(
         NextResponse.json({
           ok: true,
