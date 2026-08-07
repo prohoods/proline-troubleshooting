@@ -26,10 +26,15 @@ export function GET() {
   const origin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim().replace(/\/$/, "");
   const src = `${origin ?? ""}/widget/troubleshooter.js`;
 
+  // The mount point lives in the theme's DOM, so theme CSS can style it even
+  // though it can't reach inside the shadow root. Something in this theme
+  // matches a bare <div> here and sets `display: none`, which collapsed the
+  // whole widget to 0×0 while its shadow content rendered fine. An inline
+  // declaration with !important can't be overridden by any author stylesheet.
   const body = `<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${FONT_HREF}">
-<div id="proline-troubleshooter"></div>
+<div id="proline-troubleshooter" style="display:block !important;visibility:visible !important;width:auto !important;height:auto !important;max-height:none !important;opacity:1 !important"></div>
 <script src="${src}" defer></script>
 `;
 
