@@ -42,21 +42,21 @@ export function CategoryScreen({
       <h2 className="mt-5 text-3xl font-bold text-ink sm:text-4xl">
         What are you troubleshooting?
       </h2>
-      <p className="mt-4 text-muted">Choose the product you need help with.</p>
+      <p className="mt-3 text-muted">Choose the product you need help with.</p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {categories.map((c) => (
           <button
             key={c.id}
             type="button"
             onClick={() => (c.available ? onPick(c) : setUnavailable(c))}
-            className="group relative flex flex-col items-center gap-4 rounded-2xl border border-field bg-white p-8 text-center transition hover:border-sky hover:shadow-md"
+            className="group relative flex flex-col items-center gap-3 rounded-2xl border border-field bg-white p-6 text-center transition hover:border-sky hover:shadow-md"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={assetUrl(`/icons/${c.id}.svg`)}
               alt=""
-              className={`aspect-square w-full max-w-[200px] object-contain ${
+              className={`aspect-square w-full max-w-[128px] object-contain ${
                 c.available ? "" : "opacity-40"
               }`}
             />

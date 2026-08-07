@@ -18,6 +18,7 @@ import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { apiUrl } from "@/lib/apiBase";
+import { Panel } from "@/components/ui/Panel";
 import { CategoryScreen } from "./CategoryScreen";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
@@ -241,18 +242,25 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
   }
 
   if (phase === "welcome") {
-    return <WelcomeScreen mode={mode} onStart={() => setPhase("category")} />;
+    return (
+      <Panel>
+        <WelcomeScreen mode={mode} onStart={() => setPhase("category")} />
+      </Panel>
+    );
   }
 
   if (phase === "category") {
     return (
-      <CategoryScreen onPick={pickCategory} onBack={() => setPhase("welcome")} />
+      <Panel>
+        <CategoryScreen onPick={pickCategory} onBack={() => setPhase("welcome")} />
+      </Panel>
     );
   }
 
   if (phase === "questions" && flow && current) {
     return (
-      <QuestionScreen
+      <Panel>
+        <QuestionScreen
         question={current}
         answers={answers}
         section={sectionLabel(flow, answers, current)}
@@ -269,8 +277,9 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
         uploadFilesFor={(id) => uploadFiles[id] ?? []}
         onUploadFiles={(id, files) =>
           setUploadFiles((prev) => ({ ...prev, [id]: files }))
-        }
-      />
+          }
+        />
+      </Panel>
     );
   }
 

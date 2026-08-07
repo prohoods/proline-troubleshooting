@@ -11,9 +11,9 @@ export function WelcomeScreen({
   mode?: AppMode;
 }) {
   return (
-    <section className="py-4">
+    <section>
       <Eyebrow>Proline Troubleshooting</Eyebrow>
-      <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-5xl">
+      <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-4xl">
         {mode === "customer" ? (
           <>
             Let&apos;s get your hood
@@ -26,7 +26,7 @@ export function WelcomeScreen({
           </>
         )}
       </h1>
-      <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
+      <p className="mt-4 max-w-xl leading-relaxed text-muted">
         {mode === "customer" ? (
           <>
             Answer a few quick questions and we&apos;ll point you to the most
@@ -43,7 +43,7 @@ export function WelcomeScreen({
           </>
         )}
       </p>
-      <div className="mt-8">
+      <div className="mt-6">
         <Button onClick={onStart}>
           Get started <Icon name="arrowRight" className="h-4 w-4" />
         </Button>

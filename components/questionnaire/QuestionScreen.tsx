@@ -60,7 +60,7 @@ export function QuestionScreen({
         : false);
 
   return (
-    <section className="py-2">
+    <section>
       <div className="flex items-center justify-between gap-4">
         <Eyebrow rule={false}>{section}</Eyebrow>
         <span className="text-xs font-medium text-muted">Step {stepNumber}</span>
@@ -69,11 +69,11 @@ export function QuestionScreen({
         <ProgressBar value={progress} />
       </div>
 
-      <h2 className="mt-7 text-2xl font-bold leading-snug text-ink sm:text-[27.2px]">
+      <h2 className="mt-5 text-xl font-bold leading-snug text-ink sm:text-2xl">
         {question.prompt}
       </h2>
 
-      <div className="mt-6">
+      <div className="mt-5">
         {question.type === "single" && question.options && (
           <SingleSelect
             options={question.options}
@@ -157,7 +157,7 @@ export function QuestionScreen({
         )}
       </div>
 
-      <div className="mt-9 flex items-center justify-between">
+      <div className="mt-7 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
