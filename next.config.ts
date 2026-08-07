@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
   // pdfkit ships its standard-font .afm files and must be required at runtime
   // (not bundled) so those assets resolve in the serverless function.
   serverExternalPackages: ["pdfkit"],
+
+  // Shopify's App Proxy forwards the storefront request with a TRAILING SLASH.
+  // Next's default trailing-slash normalization answers that with a 308 to a
+  // relative URL, which the browser resolves against the storefront — so it
+  // re-requests the storefront path carrying Shopify's signature, and Shopify
+  // refuses to proxy an already-signed request with a bare 404. Serving both
+  // /tools/troubleshoot and /tools/troubleshoot/ without redirecting is what
+  // makes the proxy work at all.
+  skipTrailingSlashRedirect: true,
+
   ...(assetPrefix ? { assetPrefix } : {}),
 };
 
