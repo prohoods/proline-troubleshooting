@@ -292,7 +292,7 @@ export function SupportCaseForm({
                 key={`${f.name}-${i}`}
                 className="inline-flex items-center gap-2 rounded-full bg-sky-soft px-3 py-1 text-sm text-ink"
               >
-                <span className="max-w-[12rem] truncate">{f.name}</span>
+                <span className="max-w-[192px] truncate">{f.name}</span>
                 <button
                   type="button"
                   aria-label={`Remove ${f.name}`}

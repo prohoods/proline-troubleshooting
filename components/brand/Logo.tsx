@@ -33,13 +33,13 @@ export function Logo({
       <Flame className={`h-7 w-auto shrink-0 ${flameColor}`} />
       <span className="flex flex-col leading-none">
         <span
-          className={`text-[1.3rem] font-extrabold tracking-[0.08em] ${wordColor}`}
+          className={`text-[20.8px] font-extrabold tracking-[0.08em] ${wordColor}`}
         >
           PROLINE
         </span>
         {showTagline && (
           <span
-            className={`mt-1 text-[0.5rem] font-semibold tracking-[0.14em] ${tagColor}`}
+            className={`mt-1 text-[8px] font-semibold tracking-[0.14em] ${tagColor}`}
           >
             KITCHEN APPLIANCES
           </span>

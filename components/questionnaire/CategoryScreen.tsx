@@ -62,7 +62,7 @@ export function CategoryScreen({
             <span className="text-xl font-bold text-ink">{c.label}</span>
             <span className="max-w-xs text-sm text-muted">{c.blurb}</span>
             {!c.available && (
-              <span className="absolute right-4 top-4 rounded-full bg-mist px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-muted">
+              <span className="absolute right-4 top-4 rounded-full bg-mist px-2.5 py-1 text-[9.6px] font-semibold uppercase tracking-wide text-muted">
                 Coming soon
               </span>
             )}

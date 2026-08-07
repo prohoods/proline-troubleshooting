@@ -14,7 +14,7 @@ export function AppShell({
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <HeaderLogo />
-          <span className="hidden text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted sm:block">
+          <span className="hidden text-[10.4px] font-semibold uppercase tracking-[0.2em] text-muted sm:block">
             {mode === "customer" ? "Support Center" : "Agent Console"}
           </span>
         </div>

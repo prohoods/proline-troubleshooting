@@ -69,7 +69,7 @@ export function QuestionScreen({
         <ProgressBar value={progress} />
       </div>
 
-      <h2 className="mt-7 text-2xl font-bold leading-snug text-ink sm:text-[1.7rem]">
+      <h2 className="mt-7 text-2xl font-bold leading-snug text-ink sm:text-[27.2px]">
         {question.prompt}
       </h2>
 

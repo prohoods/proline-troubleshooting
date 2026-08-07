@@ -25,6 +25,48 @@
 
   --font-sans: Montserrat, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
+
+  /*
+   * Tailwind sizes everything in rem, and rem resolves against the DOCUMENT
+   * root even inside a shadow root. The Proline theme sets
+   * `html { font-size: 62.5% }` (a 10px root), which rendered the whole widget
+   * at 62.5% scale — 36px headings became 22.5px, the 768px column became
+   * 480px. Restating the scale in px makes the widget independent of whatever
+   * root font-size the host page happens to use. Values are the Tailwind
+   * defaults evaluated at a normal 16px root.
+   */
+  --spacing: 4px;
+
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 36px;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 40px;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 1;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  --container-xs: 320px;
+  --container-sm: 384px;
+  --container-lg: 512px;
+  --container-xl: 576px;
+  --container-3xl: 768px;
 }
 
 /*
@@ -34,8 +76,10 @@
 :host {
   display: block;
   /* The theme supplies the page chrome; this is the content column, matching
-     the standalone app's max-w-3xl. */
-  max-width: 48rem;
+     the standalone app's max-w-3xl. In px for the same reason as the scale
+     tokens above — the host page's root font-size must not shrink it. */
+  max-width: 768px;
+  font-size: 16px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
   color: var(--color-ink);

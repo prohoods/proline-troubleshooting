@@ -24,7 +24,7 @@ function DiagnosisCard({ d }: { d: Diagnosis }) {
   return (
     <div className="rounded-xl border border-line bg-white p-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 shrink-0 rounded-full bg-sky-soft px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-wide text-sky">
+        <span className="mt-0.5 shrink-0 rounded-full bg-sky-soft px-2.5 py-1 text-[9.92px] font-semibold uppercase tracking-wide text-sky">
           Possible
         </span>
         <div className="min-w-0 flex-1">
