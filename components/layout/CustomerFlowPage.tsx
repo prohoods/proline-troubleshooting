@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { StripProxyQuery } from "@/components/layout/StripProxyQuery";
 import { Troubleshooter } from "@/components/questionnaire/Troubleshooter";
 
 export type PageSearchParams = Promise<{
@@ -31,6 +32,7 @@ export async function CustomerFlowPage({
 
   return (
     <AppShell mode="customer">
+      <StripProxyQuery />
       <Troubleshooter mode="customer" />
     </AppShell>
   );
