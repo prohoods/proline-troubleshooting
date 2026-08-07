@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { assetUrl } from "@/lib/apiBase";
 import { Logo } from "./Logo";
 
 // Official logo uploaded to public/brand/. Falls back to the in-app Montserrat
-// lockup if the image ever fails to load.
-const LOGO_SRC = "/brand/Proline_Kitchen_Appliances-blk.png";
+// lockup if the image ever fails to load. Resolved against this app's origin so
+// it still loads when the flow is embedded in the storefront.
+const LOGO_SRC = assetUrl("/brand/Proline_Kitchen_Appliances-blk.png");
 
 export function HeaderLogo() {
   const [failed, setFailed] = useState(false);

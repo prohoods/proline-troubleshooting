@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
+import { assetUrl } from "@/lib/apiBase";
 import { categories, type Category } from "@/lib/flow";
 
 export function CategoryScreen({
@@ -53,7 +54,7 @@ export function CategoryScreen({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/icons/${c.id}.svg`}
+              src={assetUrl(`/icons/${c.id}.svg`)}
               alt=""
               className={`aspect-square w-full max-w-[200px] object-contain ${
                 c.available ? "" : "opacity-40"

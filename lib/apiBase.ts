@@ -18,6 +18,19 @@
  * Vercel access) → same-origin relative paths.
  */
 export function apiUrl(path: string): string {
+  return absoluteUrl(path);
+}
+
+/**
+ * Same resolution for static assets (icons, logo). Embedded in the storefront,
+ * a bare "/icons/range_hood.svg" resolves against prolinerangehoods.com, where
+ * it doesn't exist — it has to point back at this app.
+ */
+export function assetUrl(path: string): string {
+  return absoluteUrl(path);
+}
+
+function absoluteUrl(path: string): string {
   const origin = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim().replace(/\/$/, "");
   if (!origin) return path;
 
