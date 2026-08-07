@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated storefront widget bundle (`npm run build:widget`).
+    "public/widget/**",
   ]),
 ]);
 
