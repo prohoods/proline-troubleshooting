@@ -199,7 +199,7 @@ export function ShopifyLookup({
                       className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
                         picked
                           ? "border-sky bg-sky-soft"
-                          : "border-field bg-white hover:border-sky/50"
+                          : "border-field bg-mist hover:border-sky hover:bg-white"
                       }`}
                     >
                       <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-mist">

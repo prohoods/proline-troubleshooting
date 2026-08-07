@@ -19,7 +19,7 @@
   --color-surface: #ffffff; /* primary surface */
   --color-mist: #f4f7f9; /* supporting light grey */
   --color-line: #dae2e9; /* hairline borders, passive dividers */
-  --color-field: #b9c6d1; /* stronger edge: inputs and clickable options */
+  --color-field: #a3b3c2; /* stronger edge: inputs and clickable options */
   --color-muted: #6b7177; /* secondary text */
   --color-accent: #ffd262; /* rare highlight only */
   --color-danger: #c0392b; /* form / validation errors */

@@ -29,10 +29,10 @@ export function MultiSelect({
             role="checkbox"
             aria-checked={selected}
             onClick={() => toggle(opt.value)}
-            className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition ${
+            className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left transition ${
               selected
                 ? "border-sky bg-sky-soft"
-                : "border-field bg-white hover:border-sky/50"
+                : "border-field bg-mist hover:border-sky hover:bg-white"
             }`}
           >
             <span

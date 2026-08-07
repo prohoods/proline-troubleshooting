@@ -48,10 +48,10 @@ export function SingleSelect({
             tabIndex={i === focusIndex ? 0 : -1}
             onKeyDown={(e) => onKeyDown(e, i)}
             onClick={() => onChange(opt.value)}
-            className={`flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition ${
+            className={`flex items-center justify-between rounded-xl border-2 px-4 py-3.5 text-left transition ${
               selected
                 ? "border-sky bg-sky-soft"
-                : "border-field bg-white hover:border-sky/50"
+                : "border-field bg-mist hover:border-sky hover:bg-white"
             }`}
           >
             <span className="font-medium text-ink">{opt.label}</span>
