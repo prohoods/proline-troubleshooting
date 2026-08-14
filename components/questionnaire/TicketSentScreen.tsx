@@ -59,24 +59,39 @@ export function TicketSentScreen({
         </p>
       </div>
 
-      {spec?.pdfUrl && (
+      {spec && (spec.installGuideUrl || spec.pdfUrl) && (
         <div className="mt-6 rounded-2xl border border-line bg-white p-5">
           <p className="text-sm font-bold text-ink">
             Your {spec.model} documents
           </p>
           <p className="mt-1 text-sm text-muted">
-            Worth a look while you wait — specifications, dimensions, and duct
-            requirements.
+            Worth a look while you wait — installation steps, specifications,
+            and duct requirements.
           </p>
-          <a
-            href={spec.pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-field bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-sky hover:bg-white"
-          >
-            <Icon name="download" className="h-4 w-4" />
-            {spec.model} spec sheet (PDF)
-          </a>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {spec.installGuideUrl && (
+              <a
+                href={spec.installGuideUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-field bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-sky hover:bg-white"
+              >
+                <Icon name="download" className="h-4 w-4 shrink-0" />
+                Install guide (PDF)
+              </a>
+            )}
+            {spec.pdfUrl && (
+              <a
+                href={spec.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-field bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-sky hover:bg-white"
+              >
+                <Icon name="download" className="h-4 w-4 shrink-0" />
+                Spec sheet (PDF)
+              </a>
+            )}
+          </div>
         </div>
       )}
 

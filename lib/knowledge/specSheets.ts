@@ -1,3 +1,4 @@
+import { PRODUCT_GUIDES } from "./productGuidesData";
 import { SPEC_SHEETS } from "./specSheetsData";
 
 export interface SpecMatch {
@@ -5,6 +6,8 @@ export interface SpecMatch {
   text: string;
   /** The "Read more here" spec-sheet PDF URL parsed from the text, if present. */
   pdfUrl?: string;
+  /** Install manual from the storefront's Resources page, when one exists. */
+  installGuideUrl?: string;
 }
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -77,9 +80,34 @@ export function findSpec(hints: (string | null | undefined)[]): SpecMatch | null
     variant ??
     [...candidates].sort((a, b) => a.normKey.length - b.normKey.length)[0];
 
+  const guides = guidesFor(pick.model);
   return {
     model: pick.model,
     text: pick.text,
-    pdfUrl: pick.text.match(/https?:\/\/\S+?\.pdf/i)?.[0],
+    // Prefer the spec sheet the Resources page publishes — it's the one the
+    // support team maintains — and fall back to the "Read more here" link
+    // embedded in the spec text.
+    pdfUrl:
+      guides?.specSheet ?? pick.text.match(/https?:\/\/\S+?\.pdf/i)?.[0],
+    installGuideUrl: guides?.installGuide,
   };
+}
+
+/**
+ * Documents for a model, matched on the model code so the two sources can
+ * disagree on naming — the spec sheets call it "PLJW 185 Slim" while the
+ * Resources page calls it "PLJW 185". Falls back to an exact name match for
+ * products with no code at all (roof caps, dampers, blowers).
+ */
+function guidesFor(model: string) {
+  const code = codeOf(model);
+  if (code) {
+    for (const [key, value] of Object.entries(PRODUCT_GUIDES)) {
+      if (codeOf(key) === code) return value;
+    }
+  }
+  const exact = Object.entries(PRODUCT_GUIDES).find(
+    ([key]) => norm(key) === norm(model),
+  );
+  return exact?.[1];
 }
