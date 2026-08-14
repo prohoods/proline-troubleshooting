@@ -490,6 +490,7 @@ export function Troubleshooter({
     return (
       <Panel>
         <QuestionScreen
+        mode={mode}
         question={current}
         answers={answers}
         section={sectionLabel(flow, answers, current)}
