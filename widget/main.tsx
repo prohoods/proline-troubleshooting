@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Troubleshooter } from "@/components/questionnaire/Troubleshooter";
+import { categories } from "@/lib/flow";
 // `?inline` hands us the compiled CSS as a string instead of injecting a
 // <style> into the document head — we need it inside the shadow root.
 import css from "./widget.css?inline";
@@ -73,6 +74,19 @@ function mount() {
 
   registerTailwindProperties();
 
+  // Options come off the mount element, so they're editable from the Shopify
+  // theme editor's Custom Liquid block without a redeploy:
+  //
+  //   data-skip-welcome="true"   — the page supplies its own intro and <h1>
+  //   data-category="range_hood" — open on the first real question
+  //
+  // Defaults reproduce the standalone behaviour (welcome → picker → questions).
+  const skipWelcome = host.dataset.skipWelcome === "true";
+  const categoryId = host.dataset.category?.trim();
+  const initialCategory = categoryId
+    ? (categories.find((c) => c.id === categoryId && c.available) ?? null)
+    : null;
+
   const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
@@ -84,7 +98,11 @@ function mount() {
 
   createRoot(root).render(
     <StrictMode>
-      <Troubleshooter mode="customer" />
+      <Troubleshooter
+        mode="customer"
+        skipWelcome={skipWelcome}
+        initialCategory={initialCategory}
+      />
     </StrictMode>,
   );
 }

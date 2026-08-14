@@ -26,9 +26,28 @@ import { WelcomeScreen } from "./WelcomeScreen";
 
 type Phase = "welcome" | "category" | "questions" | "diagnosis";
 
-export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
-  const [phase, setPhase] = useState<Phase>("welcome");
-  const [category, setCategory] = useState<Category | null>(null);
+export function Troubleshooter({
+  mode = "agent",
+  skipWelcome = false,
+  initialCategory = null,
+}: {
+  mode?: AppMode;
+  /**
+   * Start at the product picker instead of the welcome screen. Set when the
+   * host page supplies its own intro and <h1> — otherwise the widget emits a
+   * second <h1>, and the customer reads two introductions in a row.
+   */
+  skipWelcome?: boolean;
+  /**
+   * Pre-select a product so the flow opens on its first real question. For a
+   * page that is already about one product, the picker is a dead click.
+   */
+  initialCategory?: Category | null;
+}) {
+  const [phase, setPhase] = useState<Phase>(
+    initialCategory ? "questions" : skipWelcome ? "category" : "welcome",
+  );
+  const [category, setCategory] = useState<Category | null>(initialCategory);
   const [answers, setAnswers] = useState<Answers>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null);
@@ -148,9 +167,12 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
     }
   };
 
+  // With a pre-selected product there's no picker to return to, so the first
+  // step has no Back — the button is hidden rather than left inert.
+  const canGoBack = stepIndex > 0 || !initialCategory;
   const back = () => {
     if (stepIndex > 0) setStepIndex((i) => i - 1);
-    else setPhase("category");
+    else if (!initialCategory) setPhase("category");
   };
 
   const next = () => {
@@ -229,8 +251,14 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
 
   const restart = () => {
     resetRun();
-    setCategory(null);
-    setPhase("category");
+    // Return to wherever the flow actually begins for this mount.
+    if (initialCategory) {
+      setCategory(initialCategory);
+      setPhase("questions");
+    } else {
+      setCategory(null);
+      setPhase("category");
+    }
   };
 
   // Progress: project the total from current commitments so the bar only moves
@@ -252,7 +280,10 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
   if (phase === "category") {
     return (
       <Panel>
-        <CategoryScreen onPick={pickCategory} onBack={() => setPhase("welcome")} />
+        <CategoryScreen
+          onPick={pickCategory}
+          onBack={skipWelcome ? undefined : () => setPhase("welcome")}
+        />
       </Panel>
     );
   }
@@ -268,7 +299,7 @@ export function Troubleshooter({ mode = "agent" }: { mode?: AppMode }) {
         stepNumber={safeIndex + 1}
         canContinue={isAnswered(current, answers)}
         onChange={setAnswer}
-        onBack={back}
+        onBack={canGoBack ? back : undefined}
         onContinue={next}
         selectedOrder={selectedOrder}
         onSelectOrder={setSelectedOrder}

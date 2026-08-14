@@ -40,7 +40,7 @@ export function QuestionScreen({
   stepNumber: number;
   canContinue: boolean;
   onChange: (id: string, value: AnswerValue) => void;
-  onBack: () => void;
+  onBack?: () => void;
   onContinue: () => void;
   selectedOrder: SelectedOrder | null;
   onSelectOrder: (sel: SelectedOrder | null) => void;
@@ -158,13 +158,17 @@ export function QuestionScreen({
       </div>
 
       <div className="mt-7 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink"
-        >
-          <Icon name="arrowLeft" className="h-4 w-4" /> Back
-        </button>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink"
+          >
+            <Icon name="arrowLeft" className="h-4 w-4" /> Back
+          </button>
+        ) : (
+          <span />
+        )}
         <Button onClick={onContinue} disabled={!canContinue}>
           {question.terminal ? "See diagnosis" : "Continue"}
           <Icon name="arrowRight" className="h-4 w-4" />
