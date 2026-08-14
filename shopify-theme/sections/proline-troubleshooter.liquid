@@ -1,0 +1,114 @@
+{% comment %}
+  Proline Troubleshooting Guide
+  ----------------------------
+  Mounts the troubleshooting widget, which is served from the Vercel app. The
+  widget renders inside a shadow root, so nothing here can be styled by (or
+  leak into) the theme's CSS — see the notes on the wrapper below.
+
+  Everything the merchant needs is exposed as section settings, so the flow can
+  be reconfigured from the theme editor without a code change or a redeploy.
+{% endcomment %}
+
+{%- liquid
+  assign app_origin = 'https://proline-troubleshooting.vercel.app'
+-%}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap">
+
+<div
+  class="proline-troubleshooter-section"
+  style="padding-top: {{ section.settings.padding_top }}px; padding-bottom: {{ section.settings.padding_bottom }}px;"
+>
+  {%- if section.settings.heading != blank -%}
+    <h2 class="proline-troubleshooter-heading">{{ section.settings.heading | escape }}</h2>
+  {%- endif -%}
+
+  {%- comment -%}
+    The inline !important declarations are load-bearing: this theme has a rule
+    that matches a bare <div> in the content area and sets display:none, which
+    collapses the widget to 0x0 while its contents render perfectly. Inline
+    !important is the only thing an author stylesheet can't override.
+  {%- endcomment -%}
+  <div
+    id="proline-troubleshooter"
+    data-skip-welcome="{% if section.settings.skip_welcome %}true{% else %}false{% endif %}"
+    {% if section.settings.start_category != 'none' %}data-category="{{ section.settings.start_category }}"{% endif %}
+    style="display:block !important;visibility:visible !important;width:auto !important;height:auto !important;max-height:none !important;opacity:1 !important"
+  ></div>
+</div>
+
+<script src="{{ app_origin }}/widget/troubleshooter.js" defer></script>
+
+{% schema %}
+{
+  "name": "Troubleshooting guide",
+  "tag": "section",
+  "class": "section-proline-troubleshooter",
+  "limit": 1,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "The interactive troubleshooting questionnaire. Add your own heading, intro copy, and FAQ as separate sections around it."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading above the guide",
+      "info": "Optional. Renders as an H2 — leave blank if a section above already introduces the guide."
+    },
+    {
+      "type": "header",
+      "content": "Flow"
+    },
+    {
+      "type": "checkbox",
+      "id": "skip_welcome",
+      "label": "Skip the welcome screen",
+      "default": true,
+      "info": "Keep this on when the page has its own H1 and intro. Turning it off adds a second H1, which weakens the page for search."
+    },
+    {
+      "type": "select",
+      "id": "start_category",
+      "label": "Start on a product",
+      "default": "range_hood",
+      "options": [
+        { "value": "none", "label": "Ask the customer to choose" },
+        { "value": "range_hood", "label": "Range Hood" }
+      ],
+      "info": "Choosing a product skips the picker and opens the first real question. Use 'Ask the customer to choose' once more than one product flow exists."
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "Troubleshooting guide"
+    }
+  ]
+}
+{% endschema %}

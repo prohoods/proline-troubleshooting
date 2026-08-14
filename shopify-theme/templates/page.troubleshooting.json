@@ -1,0 +1,15 @@
+{
+  "sections": {
+    "troubleshooter": {
+      "type": "proline-troubleshooter",
+      "settings": {
+        "heading": "",
+        "skip_welcome": true,
+        "start_category": "range_hood",
+        "padding_top": 24,
+        "padding_bottom": 48
+      }
+    }
+  },
+  "order": ["troubleshooter"]
+}
