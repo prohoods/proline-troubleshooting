@@ -8,7 +8,7 @@ import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { Question } from "@/lib/flow/types";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact } from "@/lib/storage/types";
-import type { Answers, AnswerValue } from "@/lib/types";
+import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 import { MultiSelect } from "./inputs/MultiSelect";
 import { ShopifyLookup } from "./inputs/ShopifyLookup";
@@ -26,6 +26,7 @@ export function QuestionScreen({
   onChange,
   onBack,
   onContinue,
+  mode = "agent",
   selectedOrder,
   onSelectOrder,
   contact,
@@ -42,6 +43,7 @@ export function QuestionScreen({
   onChange: (id: string, value: AnswerValue) => void;
   onBack?: () => void;
   onContinue: () => void;
+  mode?: AppMode;
   selectedOrder: SelectedOrder | null;
   onSelectOrder: (sel: SelectedOrder | null) => void;
   contact: Contact | null;
@@ -170,7 +172,11 @@ export function QuestionScreen({
           <span />
         )}
         <Button onClick={onContinue} disabled={!canContinue}>
-          {question.terminal ? "See diagnosis" : "Continue"}
+          {question.terminal
+            ? mode === "customer"
+              ? "Send to support"
+              : "See diagnosis"
+            : "Continue"}
           <Icon name="arrowRight" className="h-4 w-4" />
         </Button>
       </div>

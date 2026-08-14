@@ -19,12 +19,28 @@ import type { Contact, RunFeedback } from "@/lib/storage/types";
 import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { apiUrl } from "@/lib/apiBase";
 import { Panel } from "@/components/ui/Panel";
+import { downscaleImage } from "@/lib/images/downscale";
+import { buildMessage, buildSummary } from "@/lib/support/summary";
+import type { SupportResult } from "@/lib/support/types";
 import { CategoryScreen } from "./CategoryScreen";
+import { ContactStep } from "./ContactStep";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
+import { TicketSentScreen } from "./TicketSentScreen";
 import { WelcomeScreen } from "./WelcomeScreen";
 
-type Phase = "welcome" | "category" | "questions" | "diagnosis";
+// "diagnosis" is agent-only. The customer path ends at "sent": their answers,
+// photos, the scripted causes, and the AI pre-diagnosis all go to the agent,
+// who replies with model-specific guidance. Showing the customer a diagnosis
+// invites them to self-treat an electrical appliance.
+type Phase =
+  | "welcome"
+  | "category"
+  | "questions"
+  | "diagnosis"
+  | "contact"
+  | "sending"
+  | "sent";
 
 export function Troubleshooter({
   mode = "agent",
@@ -59,6 +75,16 @@ export function Troubleshooter({
   // deterministic diagnoses when the LLM is unconfigured or the call fails.
   const [aiDiagnoses, setAiDiagnoses] = useState<Diagnosis[] | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  // Customer path: outcome of the automatic ticket submission.
+  const [ticket, setTicket] = useState<{
+    caseId: number | null;
+    attachedImages: number;
+  } | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  // Guards the paid upstream call against double-clicks and back-navigation —
+  // every submission costs a Stopgap case and an AI call, and a duplicate here
+  // is a duplicate ticket in an agent's queue.
+  const [sending, setSending] = useState(false);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -179,10 +205,20 @@ export function Troubleshooter({
     if (!flow || !current || !isAnswered(current, answers)) return;
     const nextSteps = buildSteps(flow, answers);
     if (current.terminal && safeIndex + 1 >= nextSteps.length) {
-      setPhase("diagnosis");
-      // Customers only ever see the scripted diagnoses — the AI runs
-      // server-side at case-submit time and lands in the agent's ticket.
-      if (mode === "agent") void runDiagnosis();
+      if (mode === "agent") {
+        setPhase("diagnosis");
+        void runDiagnosis();
+        return;
+      }
+      // Customer path: finishing the questionnaire opens a ticket. Ask for
+      // contact details only when the order didn't give us usable ones.
+      const c = effectiveContact;
+      if (!c || !c.name.trim() || !c.email.trim()) {
+        setContact(c ?? { name: "", email: "", phone: "" });
+        setPhase("contact");
+      } else {
+        void sendTicket(c);
+      }
     } else {
       setStepIndex((i) => i + 1);
     }
@@ -208,6 +244,121 @@ export function Troubleshooter({
           : undefined,
     });
   }, [mode, flow, category, diagnosis, answers, selectedOrder]);
+
+  /**
+   * Customer path terminus: create the Stopgap case from the completed run.
+   *
+   * Everything the agent needs travels with it — the answer transcript, the
+   * photos captured during the flow, the scripted causes, and (added
+   * server-side from `runContext`) the AI pre-diagnosis. The customer sees only
+   * the confirmation.
+   */
+  const sendTicket = async (c: Contact) => {
+    if (!flow || !category || sending || ticket) return;
+    setSending(true);
+    setSendError(null);
+    setPhase("sending");
+    try {
+      const summary = buildSummary(
+        selectedOrder,
+        c,
+        displayAnswers,
+        diagnosis?.diagnoses ?? [],
+        spec,
+        "",
+      );
+      const model =
+        spec?.model ??
+        selectedOrder?.product.sku ??
+        (typeof answers["p_hood_model"] === "string"
+          ? answers["p_hood_model"]
+          : "");
+
+      const processed = await Promise.all(photos.slice(0, 8).map(downscaleImage));
+
+      const fd = new FormData();
+      fd.set("name", c.name.trim());
+      fd.set("email", c.email.trim());
+      fd.set(
+        "message",
+        buildMessage(
+          displayAnswers,
+          diagnosis?.branchKey,
+          selectedOrder?.product.title ?? model ?? undefined,
+        ),
+      );
+      fd.set(
+        "subject",
+        `Range hood troubleshooting${model ? ` — ${model}` : ""}`,
+      );
+      if (c.phone?.trim()) fd.set("phone", c.phone.trim());
+      if (model) fd.set("model", model);
+      if (selectedOrder?.orderName)
+        fd.set("orderNumber", selectedOrder.orderName.replace(/^#/, ""));
+      fd.set("troubleshootingSummary", summary);
+      if (runContext) fd.set("runContext", runContext);
+      for (const p of processed) fd.append("images", p, p.name);
+
+      const res = await fetch(apiUrl("/api/support"), {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json().catch(() => ({
+        ok: false,
+        error: "Unexpected response.",
+      }))) as SupportResult;
+
+      if (json.ok) {
+        setTicket({ caseId: json.caseId, attachedImages: json.attachedImages });
+        setPhase("sent");
+        // Persist the run for analytics. The customer flow no longer asks for a
+        // rating, so this is the only record of it — best-effort, and never
+        // allowed to affect the ticket the customer was actually promised.
+        void saveRun(c);
+      } else {
+        setSendError(
+          json.error || "We couldn't send your request. Please try again.",
+        );
+        setPhase("contact");
+      }
+    } catch {
+      setSendError("We couldn't send your request. Please try again.");
+      setPhase("contact");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  /** Store the completed run (no rating on the customer path). */
+  const saveRun = async (c: Contact | null) => {
+    if (!flow || !category || !diagnosis) return;
+    try {
+      await fetch(apiUrl("/api/runs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: category.id,
+          branchKey: diagnosis.branchKey,
+          pathValue: diagnosis.pathValue,
+          model: spec?.model ?? selectedOrder?.product.sku ?? undefined,
+          order: selectedOrder ?? undefined,
+          contact: c ?? undefined,
+          answers: displayAnswers
+            .filter((a) => a.questionId !== "p_order_lookup")
+            .map((a) => ({ prompt: a.prompt, value: a.value })),
+          diagnoses: (diagnosis.diagnoses ?? []).map((d) => ({
+            title: d.title,
+            summary: d.summary,
+            steps: d.steps,
+            partsTools: d.partsTools,
+            escalation: d.escalation,
+          })),
+        }),
+      });
+    } catch {
+      // Analytics only — a failure here must not surface to the customer.
+    }
+  };
 
   const submitFeedback = async (
     feedback: RunFeedback,
@@ -251,6 +402,9 @@ export function Troubleshooter({
 
   const restart = () => {
     resetRun();
+    setTicket(null);
+    setSendError(null);
+    setSending(false);
     // Return to wherever the flow actually begins for this mount.
     if (initialCategory) {
       setCategory(initialCategory);
@@ -267,6 +421,50 @@ export function Troubleshooter({
   if (phase === "questions" && flow && steps.length > 0) {
     const total = projectedTotal(flow, answers);
     progress = total > 1 ? Math.min(1, safeIndex / (total - 1)) : 0;
+  }
+
+  if (phase === "contact") {
+    return (
+      <Panel>
+        <ContactStep
+          value={contact}
+          onChange={setContact}
+          onSubmit={() => contact && void sendTicket(contact)}
+          onBack={() => setPhase("questions")}
+          submitting={sending}
+          error={sendError}
+        />
+      </Panel>
+    );
+  }
+
+  if (phase === "sending") {
+    return (
+      <Panel>
+        <section className="flex flex-col items-center justify-center py-16 text-center">
+          <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-line border-t-sky" />
+          <h2 className="mt-6 text-xl font-bold text-ink">
+            Sending your details to our support team…
+          </h2>
+          <p className="mt-2 max-w-sm text-sm text-muted">
+            This takes a few seconds. Please don&apos;t close the page.
+          </p>
+        </section>
+      </Panel>
+    );
+  }
+
+  if (phase === "sent") {
+    return (
+      <Panel>
+        <TicketSentScreen
+          caseId={ticket?.caseId ?? null}
+          email={effectiveContact?.email ?? ""}
+          attachedImages={ticket?.attachedImages ?? 0}
+          onRestart={restart}
+        />
+      </Panel>
+    );
   }
 
   if (phase === "welcome") {

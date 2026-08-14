@@ -5,7 +5,6 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
 import type { DiagnosisResult } from "@/lib/diagnoses/resolve";
 import type { Diagnosis } from "@/lib/diagnoses/types";
-import { NO_ORDER_VALUE } from "@/lib/flow/constants";
 import type { AnswerRecord } from "@/lib/flow/engine";
 import type { SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
@@ -14,6 +13,7 @@ import type { AppMode } from "@/lib/types";
 import { apiUrl } from "@/lib/apiBase";
 import { FeedbackForm } from "./FeedbackForm";
 import { SafetyNotice } from "./SafetyNotice";
+import { buildSummary } from "@/lib/support/summary";
 import { type CaseDefaults, SupportCaseForm } from "./SupportCaseForm";
 
 function DiagnosisCard({ d }: { d: Diagnosis }) {
@@ -69,56 +69,6 @@ function DiagnosisCard({ d }: { d: Diagnosis }) {
       </div>
     </div>
   );
-}
-
-/** Plain-text run summary an agent can paste straight into a ticket. */
-function buildSummary(
-  order: SelectedOrder | null,
-  contact: Contact | null,
-  answers: AnswerRecord[],
-  diagnoses: Diagnosis[],
-  spec: SpecMatch | null,
-  notes: string,
-): string {
-  const L: string[] = ["PROLINE TROUBLESHOOTING SUMMARY", new Date().toLocaleString(), ""];
-
-  if (order) {
-    L.push(
-      `Product: ${order.product.title}${order.product.sku ? ` (SKU ${order.product.sku})` : ""}`,
-    );
-    const bits = [order.orderName];
-    if (order.processedAt)
-      bits.push(`purchased ${new Date(order.processedAt).toLocaleDateString()}`);
-    if (order.fulfillmentStatus) bits.push(order.fulfillmentStatus);
-    L.push(`Order: ${bits.join(" · ")}`);
-  } else if (spec) {
-    L.push(`Product: ${spec.model} (entered manually)`);
-  }
-  if (spec?.pdfUrl) L.push(`Spec sheet: ${spec.pdfUrl}`);
-
-  if (contact) {
-    L.push("", "CONTACT", `Name: ${contact.name}`, `Email: ${contact.email}`);
-    if (contact.phone?.trim()) L.push(`Phone: ${contact.phone}`);
-  }
-
-  L.push("", "ANSWERS");
-  for (const a of answers) {
-    if (a.questionId === "p_order_lookup" || a.value === NO_ORDER_VALUE) continue;
-    const v = Array.isArray(a.value) ? a.value.join(", ") : a.value;
-    L.push(`- ${a.prompt} -> ${v}`);
-  }
-
-  L.push("", "POSSIBLE CAUSES");
-  diagnoses.forEach((d, i) => {
-    L.push(`${i + 1}. ${d.title}`);
-    L.push(`   ${d.summary}`);
-    if (d.steps.length) L.push(`   Fix: ${d.steps.join(" | ")}`);
-    if (d.escalation) L.push(`   Escalate: ${d.escalation}`);
-  });
-
-  if (notes.trim()) L.push("", "AGENT NOTES", notes.trim());
-
-  return L.join("\n");
 }
 
 export function DiagnosisScreen({
