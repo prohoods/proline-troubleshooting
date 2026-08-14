@@ -2,6 +2,7 @@
 
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
+import type { SpecMatch } from "@/lib/knowledge/specSheets";
 
 /**
  * Terminal screen of the customer flow. The customer is never shown a
@@ -12,11 +13,15 @@ export function TicketSentScreen({
   caseId,
   email,
   attachedImages,
+  spec,
   onRestart,
 }: {
   caseId: number | null;
   email: string;
   attachedImages: number;
+  /** Matched product, for the reference documents. Null when we couldn't
+   *  identify the model — the block is hidden rather than showing dead links. */
+  spec: SpecMatch | null;
   onRestart: () => void;
 }) {
   return (
@@ -53,6 +58,27 @@ export function TicketSentScreen({
           went across with it, so you won&apos;t be asked to repeat any of it.
         </p>
       </div>
+
+      {spec?.pdfUrl && (
+        <div className="mt-6 rounded-2xl border border-line bg-white p-5">
+          <p className="text-sm font-bold text-ink">
+            Your {spec.model} documents
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Worth a look while you wait — specifications, dimensions, and duct
+            requirements.
+          </p>
+          <a
+            href={spec.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-field bg-mist px-4 py-3 text-sm font-semibold text-ink transition hover:border-sky hover:bg-white"
+          >
+            <Icon name="download" className="h-4 w-4" />
+            {spec.model} spec sheet (PDF)
+          </a>
+        </div>
+      )}
 
       <div className="mt-7 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
         <p className="font-bold">While you wait</p>

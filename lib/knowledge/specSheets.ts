@@ -14,6 +14,10 @@ const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
 const CODE = /PL[A-Z]{2,3}\d{3}/;
 const codeOf = (s: string): string | null => norm(s).match(CODE)?.[0] ?? null;
 
+/** The 3-digit model number ("PLJW 121" → "121"), for bare-number lookups. */
+const numberOf = (s: string): string | null =>
+  codeOf(s)?.match(/\d{3}$/)?.[0] ?? null;
+
 interface Entry {
   model: string;
   text: string;
@@ -41,7 +45,27 @@ export function findSpec(hints: (string | null | undefined)[]): SpecMatch | null
   const normHints = clean.map(norm);
   const hintCodes = new Set(clean.map(codeOf).filter(Boolean) as string[]);
 
-  const candidates = ENTRIES.filter((e) => e.code && hintCodes.has(e.code));
+  let candidates = ENTRIES.filter((e) => e.code && hintCodes.has(e.code));
+
+  // Customers routinely type just the number ("121") rather than the full code,
+  // which otherwise matches nothing and leaves them with no spec sheet. Resolve
+  // a bare number only when exactly one model carries it — 13 of the 27 numbers
+  // are shared across models, and a confident wrong spec is worse than none.
+  //
+  // Deliberately strict: the hint must be the number and nothing else. Shopify
+  // titles and SKUs are full of incidental digits ("1200 CFM", "36 inch"), and
+  // substring matching against those produces silent mis-identification.
+  if (candidates.length === 0) {
+    for (const h of normHints) {
+      if (!/^\d{3}$/.test(h)) continue;
+      const byNumber = ENTRIES.filter((e) => numberOf(e.model) === h);
+      if (byNumber.length === 1) {
+        candidates = byNumber;
+        break;
+      }
+    }
+  }
+
   if (candidates.length === 0) return null;
 
   // Prefer the variant whose full key the hint actually contains (longest first),

@@ -461,6 +461,7 @@ export function Troubleshooter({
           caseId={ticket?.caseId ?? null}
           email={effectiveContact?.email ?? ""}
           attachedImages={ticket?.attachedImages ?? 0}
+          spec={spec}
           onRestart={restart}
         />
       </Panel>
