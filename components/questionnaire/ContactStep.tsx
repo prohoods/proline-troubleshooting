@@ -58,6 +58,20 @@ export function ContactStep({
         <ContactForm value={value} onChange={onChange} />
       </div>
 
+      <p className="mt-4 text-xs leading-relaxed text-muted">
+        We use these details to answer your request and nothing else. Your
+        answers and photos are stored with your support case — see our{" "}
+        <a
+          href="https://prolinerangehoods.com/pages/privacy-statement"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-sky underline-offset-2 hover:underline"
+        >
+          Privacy Statement
+        </a>
+        .
+      </p>
+
       <TurnstileWidget onToken={onToken} />
 
       {touched && !ready && (

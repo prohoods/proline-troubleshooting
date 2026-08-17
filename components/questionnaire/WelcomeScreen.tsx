@@ -16,7 +16,7 @@ export function WelcomeScreen({
       <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-4xl">
         {mode === "customer" ? (
           <>
-            Let&apos;s get your hood
+            Let&apos;s get your Proline
             <br className="hidden sm:block" /> working again.
           </>
         ) : (
@@ -29,10 +29,10 @@ export function WelcomeScreen({
       <p className="mt-4 max-w-xl leading-relaxed text-muted">
         {mode === "customer" ? (
           <>
-            Answer a few quick questions and we&apos;ll point you to the most
-            likely cause — and the fix. It takes about two minutes, and if it
-            doesn&apos;t solve it, everything you tell us goes straight to our
-            support team so you never repeat yourself.
+            Answer a few quick questions about what&apos;s happening. It takes
+            about two minutes, and everything you tell us — photos included —
+            goes straight to a Proline specialist, who&apos;ll email you within
+            one to two business days. You won&apos;t have to repeat any of it.
           </>
         ) : (
           <>

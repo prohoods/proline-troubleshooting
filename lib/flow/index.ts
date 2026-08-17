@@ -30,7 +30,7 @@ export const categories: Category[] = [
   {
     id: "ranges",
     label: "Ranges",
-    blurb: "Gas, dual-fuel, and induction ranges.",
+    blurb: "Gas and dual-fuel ranges, and gas cooktops.",
     icon: "range",
     available: true,
     flow: rangesFlow,

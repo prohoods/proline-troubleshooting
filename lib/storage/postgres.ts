@@ -113,3 +113,75 @@ export const postgresStorage: StorageAdapter = {
     return rows.map(toRecord);
   },
 };
+
+/**
+ * Retention, in two stages, because contact details and analytics have very
+ * different useful lifespans.
+ *
+ * Stopgap is the system of record for a support case — this table exists so we
+ * can see which products and branches customers actually land on. That analysis
+ * needs no names, emails, phone numbers, or order details, so those are cleared
+ * well before the row itself goes.
+ *
+ * Returns what it changed so a scheduled run can be verified rather than
+ * assumed.
+ */
+export async function pruneRuns(opts: {
+  piiDays: number;
+  deleteDays: number;
+}): Promise<{ anonymised: number; deleted: number }> {
+  if (!postgresConfigured()) return { anonymised: 0, deleted: 0 };
+  await ensureTable();
+
+  // Stage 1 — strip the personal data, keep the shape of the run.
+  const anonymised = (await db()`
+    UPDATE runs
+       SET contact_json = NULL,
+           order_json   = NULL
+     WHERE created_at < now() - (${opts.piiDays} || ' days')::interval
+       AND (contact_json IS NOT NULL OR order_json IS NOT NULL)
+    RETURNING id
+  `) as { id: string }[];
+
+  // Stage 2 — drop the row entirely once even the aggregate has aged out.
+  const deleted = (await db()`
+    DELETE FROM runs
+     WHERE created_at < now() - (${opts.deleteDays} || ' days')::interval
+    RETURNING id
+  `) as { id: string }[];
+
+  return { anonymised: anonymised.length, deleted: deleted.length };
+}
+
+/** Aggregate counts for volume monitoring. No personal data leaves here. */
+export async function runStats(days: number): Promise<{
+  total: number;
+  byDay: { day: string; runs: number }[];
+  byCategory: { category: string; runs: number }[];
+  byBranch: { category: string; branch: string | null; runs: number }[];
+}> {
+  if (!postgresConfigured())
+    return { total: 0, byDay: [], byCategory: [], byBranch: [] };
+  await ensureTable();
+  const since = `${days} days`;
+
+  const [total, byDay, byCategory, byBranch] = await Promise.all([
+    db()`SELECT count(*)::int AS n FROM runs WHERE created_at > now() - (${since})::interval`,
+    db()`SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, count(*)::int AS runs
+           FROM runs WHERE created_at > now() - (${since})::interval
+          GROUP BY 1 ORDER BY 1 DESC`,
+    db()`SELECT category, count(*)::int AS runs
+           FROM runs WHERE created_at > now() - (${since})::interval
+          GROUP BY 1 ORDER BY 2 DESC`,
+    db()`SELECT category, branch_key AS branch, count(*)::int AS runs
+           FROM runs WHERE created_at > now() - (${since})::interval
+          GROUP BY 1, 2 ORDER BY 3 DESC`,
+  ]);
+
+  return {
+    total: (total as { n: number }[])[0]?.n ?? 0,
+    byDay: byDay as { day: string; runs: number }[],
+    byCategory: byCategory as { category: string; runs: number }[],
+    byBranch: byBranch as { category: string; branch: string | null; runs: number }[],
+  };
+}
