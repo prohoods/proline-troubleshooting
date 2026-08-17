@@ -21,14 +21,18 @@ const num = (v: string | undefined, fallback: number) => {
 };
 
 export async function GET(request: Request) {
-  // Vercel Cron sends this header; CRON_SECRET keeps the endpoint from being
-  // triggered by anyone who finds the URL.
+  // This endpoint deletes data, so it fails CLOSED: no CRON_SECRET means it
+  // refuses to run rather than allowing an anonymous prune. Vercel Cron sends
+  // the secret as a bearer token automatically.
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json(
+      { ok: false, error: "CRON_SECRET is not configured; refusing to prune" },
+      { status: 503 },
+    );
+  }
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
   if (!postgresConfigured()) {
