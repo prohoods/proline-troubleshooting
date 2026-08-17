@@ -1,5 +1,6 @@
 import type { CategoryFlow } from "./types";
 import { rangeHoodFlow } from "./rangeHoodFlow";
+import { rangesFlow } from "./rangesFlow";
 
 export type CategoryId = "range_hood" | "ranges";
 
@@ -31,7 +32,8 @@ export const categories: Category[] = [
     label: "Ranges",
     blurb: "Gas, dual-fuel, and induction ranges.",
     icon: "range",
-    available: false, // TODO: add the Ranges troubleshooting flow once supplied.
+    available: true,
+    flow: rangesFlow,
   },
 ];
 

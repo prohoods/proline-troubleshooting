@@ -35,7 +35,10 @@ export function resolveDiagnoses(
   const branch = getActiveBranch(flow, answers);
   if (!branch) return { diagnoses: DIAGNOSIS_CONTENT._fallback };
 
-  let diagnoses = [...(DIAGNOSIS_CONTENT[branch.key] ?? DIAGNOSIS_CONTENT._fallback)];
+  // No entry means no vetted causes for that branch — currently every ranges
+  // branch. Falling back to the hood set would staple hood diagnoses onto a
+  // range case, which is worse for the agent than showing none.
+  let diagnoses = [...(DIAGNOSIS_CONTENT[branch.key] ?? [])];
   const pathValue =
     branch.kind === "split" ? getActivePath(branch, answers)?.value : undefined;
 
