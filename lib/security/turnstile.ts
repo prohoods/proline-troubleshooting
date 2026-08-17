@@ -9,8 +9,19 @@
 const VERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
+/**
+ * Enforcement needs BOTH halves: the secret to verify with, and the site key
+ * the browser needs to produce a token at all.
+ *
+ * Configuring only the secret is the dangerous case — the server demands a
+ * token the widget can never generate, and every submission fails. That's
+ * worse than no bot protection, so a half-configured setup is treated as off.
+ */
 export function turnstileConfigured(): boolean {
-  return Boolean(process.env.TURNSTILE_SECRET_KEY);
+  return Boolean(
+    process.env.TURNSTILE_SECRET_KEY &&
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+  );
 }
 
 /**
@@ -25,8 +36,8 @@ export async function verifyTurnstile(
   token: string | null,
   ip: string | null,
 ): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true;
+  if (!turnstileConfigured()) return true;
+  const secret = process.env.TURNSTILE_SECRET_KEY as string;
   if (!token) return false;
 
   try {
