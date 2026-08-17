@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { HelpToggle } from "@/components/ui/HelpToggle";
 import { Icon } from "@/components/ui/Icon";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { NO_ORDER_VALUE } from "@/lib/flow/constants";
@@ -76,6 +77,7 @@ export function QuestionScreen({
 
       <h2 className="mt-5 text-xl font-bold leading-snug text-ink sm:text-2xl">
         {question.prompt}
+        {question.helpText && <HelpToggle text={question.helpText} />}
       </h2>
 
       <div className="mt-5">

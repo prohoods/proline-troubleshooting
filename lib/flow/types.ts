@@ -44,6 +44,12 @@ export interface Question {
   placeholder?: string;
   /** Optional questions never block "Continue" (text, uploads, terminal notes). */
   optional?: boolean;
+  /**
+   * Plain-language explainer behind a "?" next to the prompt. For the jargon a
+   * homeowner has no reason to know — termination cap, make-up air, elbows.
+   * Tap-to-toggle rather than hover, because most of this is read on a phone.
+   */
+  helpText?: string;
   followUp?: FollowUp;
   /** Show this question only when the gate passes (else it's skipped entirely). */
   visibleWhen?: VisibilityRule;

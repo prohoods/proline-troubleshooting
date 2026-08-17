@@ -92,8 +92,10 @@ export const rangeHoodFlow: CategoryFlow = {
   issueType: {
     id: "issue_type",
     legacyLabel: "QUESTION 3",
-    prompt: "What issue are you experiencing?",
-    type: "single",
+    prompt: "What issue are you experiencing? (Select all that apply)",
+    helpText:
+      "We'll ask detailed questions about the first issue you pick, and pass everything else you select straight to our specialist so you don't have to answer two sets of questions.",
+    type: "multi",
     // option.value MUST equal the target branch.key
     options: [
       { value: "hood_performance", label: "Hood Performance / Airflow Issue" },
@@ -237,6 +239,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_in_q17",
               legacyLabel: "QUESTION 17",
               prompt: "What duct size is installed?",
+              helpText:
+                "The round metal pipe carrying air from the hood to the outside. Look above the hood or in the cabinet: the size is the pipe's diameter, usually stamped on it. Most Proline hoods use 8 or 10 inch. If you can't see it, choose Unsure \u2014 it isn't worth climbing for.",
               type: "multi",
               options: o('8"', '10"', '12"', "Other", "Unsure"),
             },
@@ -259,6 +263,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_in_q19",
               legacyLabel: "QUESTION 19",
               prompt: "How many 90° elbows are in the duct system?",
+              helpText:
+                "An elbow is a bend in the ductwork \u2014 a 90\u00b0 elbow is a right-angle turn. Each one slows airflow noticeably, so the count matters. Count the turns between the hood and where the duct exits your house. Choose Unsure if the run is hidden.",
               type: "multi",
               options: o("0", "1", "2", "3", "4+"),
             },
@@ -266,6 +272,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_in_q20",
               legacyLabel: "QUESTION 20",
               prompt: "Are there any duct size reductions in the duct system?",
+              helpText:
+                "A reduction is where the duct narrows \u2014 for example an 8 inch pipe stepping down to 6 inch. It's a common cause of weak airflow and noise, and often happens where new ductwork meets older pipework.",
               type: "multi",
               options: o("Yes", "No", "Unsure"),
               followUp: {
@@ -279,6 +287,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_in_q21",
               legacyLabel: "QUESTION 21",
               prompt: "What type of termination cap is installed?",
+              helpText:
+                "The cover where the duct exits your house \u2014 on the roof or through an exterior wall. It usually has a flap or louvers that open when the hood runs. If you're unsure, a photo of the outside of your house at that spot tells us what we need.",
               type: "multi",
               options: o(
                 "Roof Cap",
@@ -300,6 +310,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_in_q23",
               legacyLabel: "QUESTION 23",
               prompt: "Is the home equipped with Make-Up Air (MUA)?",
+              helpText:
+                "Make-Up Air is a system that lets fresh air back into the house to replace what a powerful hood pulls out. Without it, a sealed modern home can end up starved of air and the hood can't pull properly \u2014 which feels like weak suction even when nothing is broken. Many homes don't have it; choose Unsure if you don't know.",
               type: "single",
               options: o("Yes", "No", "Unsure"),
             },
@@ -429,6 +441,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_out_q17",
               legacyLabel: "QUESTION 17",
               prompt: "What duct size is installed?",
+              helpText:
+                "The round metal pipe carrying air from the hood to the outside. Look above the hood or in the cabinet: the size is the pipe's diameter, usually stamped on it. Most Proline hoods use 8 or 10 inch. If you can't see it, choose Unsure \u2014 it isn't worth climbing for.",
               type: "multi",
               options: o('8"', '10"', '12"', "Other", "Unsure"),
             },
@@ -458,6 +472,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_out_q20",
               legacyLabel: "QUESTION 20",
               prompt: "How many 90° elbows are in the duct system?",
+              helpText:
+                "An elbow is a bend in the ductwork \u2014 a 90\u00b0 elbow is a right-angle turn. Each one slows airflow noticeably, so the count matters. Count the turns between the hood and where the duct exits your house. Choose Unsure if the run is hidden.",
               type: "multi",
               options: o("0", "1", "2", "3", "4+"),
             },
@@ -465,6 +481,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_out_q21",
               legacyLabel: "QUESTION 21",
               prompt: "Are there any duct size reductions in the duct system?",
+              helpText:
+                "A reduction is where the duct narrows \u2014 for example an 8 inch pipe stepping down to 6 inch. It's a common cause of weak airflow and noise, and often happens where new ductwork meets older pipework.",
               type: "multi",
               options: o("Yes", "No", "Unsure"),
               followUp: {
@@ -478,6 +496,8 @@ export const rangeHoodFlow: CategoryFlow = {
               id: "hp_out_q22",
               legacyLabel: "QUESTION 22",
               prompt: "What type of termination cap is installed?",
+              helpText:
+                "The cover where the duct exits your house \u2014 on the roof or through an exterior wall. It usually has a flap or louvers that open when the hood runs. If you're unsure, a photo of the outside of your house at that spot tells us what we need.",
               type: "multi",
               options: o(
                 "Mushroom Cap",
@@ -735,6 +755,8 @@ export const rangeHoodFlow: CategoryFlow = {
           id: "elec_q8",
           legacyLabel: "QUESTION 8",
           prompt: "Has the breaker been checked?",
+          helpText:
+            "The breaker is the switch in your home's electrical panel that supplies the hood. A tripped breaker looks like a switch sitting between on and off. Switch it fully off and back on to reset it.",
           type: "multi",
           options: o("Yes", "No"),
         },

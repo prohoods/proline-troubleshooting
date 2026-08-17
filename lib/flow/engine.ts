@@ -1,14 +1,41 @@
 import type { Answers, AnswerValue } from "@/lib/types";
 import type { Branch, BranchPath, CategoryFlow, Question, SplitBranch } from "./types";
 
-/** The branch selected by the issue-type answer, if any. */
+/**
+ * The branch the questionnaire follows.
+ *
+ * Issue type is multi-select: a hood that rattles AND has a dead light is one
+ * visit, not two. Asking every selected branch in sequence would push the
+ * questionnaire past 40 steps on a phone, and an abandoned run now costs the
+ * ticket entirely — so the flow follows the FIRST selection and the rest are
+ * recorded on the ticket for the agent (see selectedIssueLabels).
+ */
 export function getActiveBranch(
   flow: CategoryFlow,
   answers: Answers,
 ): Branch | undefined {
-  const key = answers[flow.issueType.id];
-  if (typeof key !== "string") return undefined;
+  const key = primaryIssueKey(answers[flow.issueType.id]);
+  if (!key) return undefined;
   return flow.branches.find((b) => b.key === key);
+}
+
+/** First selected issue, tolerating the legacy single-select string. */
+export function primaryIssueKey(value: AnswerValue | undefined): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return null;
+}
+
+/** Every issue the customer selected, as display labels, primary first. */
+export function selectedIssueLabels(
+  flow: CategoryFlow,
+  answers: Answers,
+): string[] {
+  const raw = answers[flow.issueType.id];
+  const values = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : [];
+  return values.map(
+    (v) => flow.issueType.options?.find((o) => o.value === v)?.label ?? v,
+  );
 }
 
 /** The Indoors/Outdoors sub-path selected within a split branch, if any. */

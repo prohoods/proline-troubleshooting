@@ -21,6 +21,13 @@ export function buildSummary(
   diagnoses: Diagnosis[],
   spec: SpecMatch | null,
   notes: string,
+  /**
+   * Every issue the customer selected, primary first. Issue type is
+   * multi-select but the questionnaire only walks the first one, so the others
+   * appear nowhere else in detail — the agent needs them called out, not left
+   * buried in the answer list.
+   */
+  issueLabels: string[] = [],
 ): string {
   const L: string[] = [
     "PROLINE TROUBLESHOOTING SUMMARY",
@@ -45,6 +52,17 @@ export function buildSummary(
   if (contact) {
     L.push("", "CONTACT", `Name: ${contact.name}`, `Email: ${contact.email}`);
     if (contact.phone?.trim()) L.push(`Phone: ${contact.phone}`);
+  }
+
+  if (issueLabels.length > 1) {
+    L.push("", "ISSUES REPORTED");
+    issueLabels.forEach((label, i) => {
+      L.push(
+        i === 0
+          ? `- ${label}  <- questionnaire covered this one`
+          : `- ${label}  <- NOT asked about; customer reported it too`,
+      );
+    });
   }
 
   L.push("", "ANSWERS");

@@ -12,6 +12,7 @@ import {
   isAnswered,
   projectedTotal,
   sectionLabel,
+  selectedIssueLabels,
 } from "@/lib/flow/engine";
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
@@ -263,6 +264,7 @@ export function Troubleshooter({
         diagnosis?.diagnoses ?? [],
         spec,
         "",
+        flow ? selectedIssueLabels(flow, answers) : [],
       );
       const model =
         spec?.model ??
