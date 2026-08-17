@@ -12,16 +12,19 @@ import type { Diagnosis } from "./types";
 //
 // House rules for this file:
 // - Steps must be safe, DIY-appropriate, and start with power-off where relevant.
-// - No prices and no phone numbers (both drift); escalation points at the
-//   support-case form on the results page.
+// - No prices and no phone numbers (both drift). Escalation copy must read
+//   correctly in BOTH places it now appears: the agent console, and the
+//   Stopgap ticket a customer's own submission created. So it says "this needs
+//   Proline support" rather than "create a support case below" — the customer
+//   never sees it, and the agent reading it is already inside the case.
 // - Don't state model-specific specs — the AI path handles per-model detail.
 // ===========================================================================
 
 const ESCALATE_CASE =
-  "create a support case below — your answers and photos travel with it, so support can match the exact part or next step without re-asking.";
+  "this needs Proline support — the full questionnaire and any photos travel with the case, so the exact part or next step can be matched without re-asking.";
 
 const ESCALATE_CASE_CAP =
-  "Create a support case below — your answers and photos travel with it, so support can match the exact part or next step without re-asking.";
+  "This needs Proline support — the full questionnaire and any photos travel with the case, so the exact part or next step can be matched without re-asking.";
 
 export const DIAGNOSIS_CONTENT: Record<string, Diagnosis[]> = {
   hood_performance: [
@@ -72,7 +75,7 @@ export const DIAGNOSIS_CONTENT: Record<string, Diagnosis[]> = {
         "If the window test confirms it: code (IRC M1503.6) requires an automatic make-up air system for hoods rated 400 CFM and up — a cracked window is a diagnostic, not a fix.",
       ],
       escalation:
-        "Make-up air system design and installation is HVAC-professional territory. If the window test was positive, create a support case below so support can confirm the finding, and consult a local HVAC contractor about a make-up air kit (tempered, in cold climates).",
+        "Make-up air system design and installation is HVAC-professional territory. If the window test was positive, Proline support can confirm the finding — and a local HVAC contractor should be consulted about a make-up air kit (tempered, in cold climates).",
     },
   ],
 
@@ -216,7 +219,7 @@ export const DIAGNOSIS_CONTENT: Record<string, Diagnosis[]> = {
       ],
       partsTools: ["Lamp or plug-in tester", "Flashlight"],
       escalation:
-        "If you smell burning, see sparks or scorching, or the breaker trips repeatedly: stop, cut power at the breaker, and leave it off — then create a support case below immediately. In the first year, electrician labor can be covered through pre-approved reimbursement, so get support's approval before booking the visit.",
+        "If you smell burning, see sparks or scorching, or the breaker trips repeatedly: stop, cut power at the breaker, and leave it off — this needs Proline support immediately. In the first year, electrician labor can be covered through pre-approved reimbursement, so support must approve before a visit is booked.",
     },
     {
       id: "elec_internal",
@@ -296,7 +299,7 @@ export const DIAGNOSIS_CONTENT: Record<string, Diagnosis[]> = {
         "Photograph or film the issue itself, plus one wider shot showing the whole hood and installation.",
       ],
       escalation:
-        "Create a support case below with those photos attached — everything you've entered here travels with it, so you won't have to repeat yourself.",
+        "This needs Proline support, with those photos attached — the full questionnaire travels with the case.",
     },
   ],
 
@@ -310,7 +313,7 @@ export const DIAGNOSIS_CONTENT: Record<string, Diagnosis[]> = {
       steps: [
         "Photograph the data plate (model and serial) — it's behind the baffle filters or on the blower housing.",
         "Add a photo or short video of the issue if you haven't already.",
-        "Create a support case below — your full questionnaire goes with it.",
+        "This needs Proline support — the full questionnaire goes with the case.",
       ],
       escalation:
         "If anything smells like burning, sparks, or trips the breaker, cut power at the breaker and leave the hood off until support responds.",
