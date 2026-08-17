@@ -210,15 +210,12 @@ export function Troubleshooter({
         void runDiagnosis();
         return;
       }
-      // Customer path: finishing the questionnaire opens a ticket. Ask for
-      // contact details only when the order didn't give us usable ones.
+      // Customer path: finishing the questionnaire opens a ticket, but never
+      // silently. The reply address is usually inherited from the Shopify
+      // order, which can be years old, so the customer confirms it first.
       const c = effectiveContact;
-      if (!c || !c.name.trim() || !c.email.trim()) {
-        setContact(c ?? { name: "", email: "", phone: "" });
-        setPhase("contact");
-      } else {
-        void sendTicket(c);
-      }
+      setContact(c ?? { name: "", email: "", phone: "" });
+      setPhase("contact");
     } else {
       setStepIndex((i) => i + 1);
     }
@@ -433,6 +430,9 @@ export function Troubleshooter({
           onBack={() => setPhase("questions")}
           submitting={sending}
           error={sendError}
+          complete={Boolean(
+            effectiveContact?.name.trim() && effectiveContact?.email.trim(),
+          )}
         />
       </Panel>
     );

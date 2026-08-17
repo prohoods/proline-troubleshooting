@@ -177,7 +177,8 @@ export function QuestionScreen({
         <Button onClick={onContinue} disabled={!canContinue}>
           {isLast
             ? mode === "customer"
-              ? "Send to support"
+              ? // A confirmation step follows, so don't promise it's sent yet.
+                "Review and send"
               : "See diagnosis"
             : "Continue"}
           <Icon name="arrowRight" className="h-4 w-4" />

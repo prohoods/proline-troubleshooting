@@ -8,13 +8,13 @@ import type { Contact } from "@/lib/storage/types";
 import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 
 /**
- * Last-resort contact capture on the customer path.
+ * Final confirmation before the ticket is created.
  *
- * The flow only asks "How can we reach you?" when the customer couldn't find
- * their order; otherwise the name and email come from the Shopify order. That
- * covers almost everyone, but a guest checkout or a missing customer record can
- * leave one of them blank — and Stopgap rejects a case with no name. Rather
- * than fail at the last step, ask for what's missing.
+ * Shown to everyone, because the reply address is usually inherited from the
+ * Shopify order and an order can be years old — the customer should see where
+ * the answer is going before it's sent, not after. It doubles as the capture
+ * step when the order gave us nothing usable: a guest checkout can leave the
+ * name blank, and Stopgap rejects a case without one.
  */
 export function ContactStep({
   value,
@@ -23,6 +23,7 @@ export function ContactStep({
   onBack,
   submitting,
   error,
+  complete,
 }: {
   value: Contact | null;
   onChange: (c: Contact) => void;
@@ -30,6 +31,9 @@ export function ContactStep({
   onBack: () => void;
   submitting: boolean;
   error: string | null;
+  /** True when the order already gave us usable details — changes the ask from
+   *  "we need these" to "check these are right". */
+  complete: boolean;
 }) {
   const [touched, setTouched] = useState(false);
   const c = value ?? { name: "", email: "", phone: "" };
@@ -39,11 +43,12 @@ export function ContactStep({
     <section>
       <Eyebrow>Almost done</Eyebrow>
       <h2 className="mt-5 text-xl font-bold leading-snug text-ink sm:text-2xl">
-        Where should we send our answer?
+        {complete ? "Is this your info?" : "Where should we send our answer?"}
       </h2>
       <p className="mt-2 text-sm text-muted">
-        We couldn&apos;t pull your details from your order, so we just need these
-        to reply.
+        {complete
+          ? "This is what we have from your order. Change anything that's out of date — this is where our reply goes."
+          : "We couldn't pull your details from your order, so we just need these to reply."}
       </p>
 
       <div className="mt-5">
