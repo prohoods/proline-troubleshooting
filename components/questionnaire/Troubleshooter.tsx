@@ -14,6 +14,7 @@ import {
   sectionLabel,
   selectedIssueLabels,
 } from "@/lib/flow/engine";
+import { looksLikeRange } from "@/lib/knowledge/productKind";
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
@@ -27,6 +28,7 @@ import { CategoryScreen } from "./CategoryScreen";
 import { ContactStep } from "./ContactStep";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
+import { RangeNoticeScreen } from "./RangeNoticeScreen";
 import { TicketSentScreen } from "./TicketSentScreen";
 import { WelcomeScreen } from "./WelcomeScreen";
 
@@ -86,6 +88,11 @@ export function Troubleshooter({
   // every submission costs a Stopgap case and an AI call, and a duplicate here
   // is a duplicate ticket in an agent's queue.
   const [sending, setSending] = useState(false);
+  // Range diversion: detection is conservative, but a typo shouldn't strand
+  // anyone, so it can be dismissed.
+  const [rangeDismissed, setRangeDismissed] = useState(false);
+  const [rangeDescription, setRangeDescription] = useState("");
+  const [rangePhotos, setRangePhotos] = useState<File[]>([]);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -135,6 +142,20 @@ export function Troubleshooter({
       };
     return null;
   }, [contact, selectedOrder]);
+
+  // The guide is hood-only. A PLSR range or PLST range top gets diverted rather
+  // than walked through ductwork and baffle-filter questions.
+  const manualModel =
+    typeof answers["p_hood_model"] === "string" ? answers["p_hood_model"] : null;
+  const isRange =
+    mode === "customer" &&
+    !rangeDismissed &&
+    looksLikeRange(
+      selectedOrder?.product.title,
+      selectedOrder?.product.sku,
+      manualModel,
+    );
+  const rangeLabel = selectedOrder?.product.title ?? manualModel ?? null;
 
   // All photos captured across the flow, for the support case.
   const photos = useMemo(() => Object.values(uploadFiles).flat(), [uploadFiles]);
@@ -328,6 +349,78 @@ export function Troubleshooter({
     }
   };
 
+  /**
+   * Range path terminus. Deliberately separate from sendTicket: there's no
+   * questionnaire transcript, no scripted causes, and no AI pre-diagnosis to
+   * attach, because none of that knowledge covers cooking appliances. The
+   * subject is flagged so it's obvious in the queue.
+   */
+  const sendRangeTicket = async () => {
+    if (sending || ticket) return;
+    const c = contact;
+    if (!c) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const processed = await Promise.all(
+        rangePhotos.slice(0, 8).map(downscaleImage),
+      );
+      const model = rangeLabel ?? "";
+      const summary = [
+        "PROLINE RANGE / COOKTOP REQUEST",
+        new Date().toLocaleString(),
+        "",
+        "Submitted from the online troubleshooting guide, which covers range",
+        "hoods only. The customer was diverted here because their product was",
+        "identified as a cooking appliance, so no hood questionnaire was asked.",
+        "",
+        model ? `Product: ${model}` : "Product: not identified",
+        selectedOrder?.orderName ? `Order: ${selectedOrder.orderName}` : "",
+        "",
+        "CONTACT",
+        `Name: ${c.name}`,
+        `Email: ${c.email}`,
+        c.phone?.trim() ? `Phone: ${c.phone}` : "",
+        "",
+        "WHAT THE CUSTOMER TOLD US",
+        rangeDescription.trim(),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const fd = new FormData();
+      fd.set("name", c.name.trim());
+      fd.set("email", c.email.trim());
+      fd.set("message", rangeDescription.trim());
+      fd.set("subject", `Range / cooktop support${model ? ` — ${model}` : ""}`);
+      if (c.phone?.trim()) fd.set("phone", c.phone.trim());
+      if (model) fd.set("model", model);
+      if (selectedOrder?.orderName)
+        fd.set("orderNumber", selectedOrder.orderName.replace(/^#/, ""));
+      fd.set("troubleshootingSummary", summary);
+      for (const p of processed) fd.append("images", p, p.name);
+
+      const res = await fetch(apiUrl("/api/support"), { method: "POST", body: fd });
+      const json = (await res.json().catch(() => ({
+        ok: false,
+        error: "Unexpected response.",
+      }))) as SupportResult;
+
+      if (json.ok) {
+        setTicket({ caseId: json.caseId, attachedImages: json.attachedImages });
+        setPhase("sent");
+      } else {
+        setSendError(
+          json.error || "We couldn't send your request. Please try again.",
+        );
+      }
+    } catch {
+      setSendError("We couldn't send your request. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   /** Store the completed run (no rating on the customer path). */
   const saveRun = async (c: Contact | null) => {
     if (!flow || !category || !diagnosis) return;
@@ -404,6 +497,9 @@ export function Troubleshooter({
     setTicket(null);
     setSendError(null);
     setSending(false);
+    setRangeDismissed(false);
+    setRangeDescription("");
+    setRangePhotos([]);
     // Return to wherever the flow actually begins for this mount.
     if (initialCategory) {
       setCategory(initialCategory);
@@ -420,6 +516,26 @@ export function Troubleshooter({
   if (phase === "questions" && flow && steps.length > 0) {
     const total = projectedTotal(flow, answers);
     progress = total > 1 ? Math.min(1, safeIndex / (total - 1)) : 0;
+  }
+
+  if (phase === "questions" && isRange) {
+    return (
+      <Panel>
+        <RangeNoticeScreen
+          productLabel={rangeLabel}
+          contact={contact ?? effectiveContact}
+          onContact={setContact}
+          description={rangeDescription}
+          onDescription={setRangeDescription}
+          photos={rangePhotos}
+          onPhotos={setRangePhotos}
+          onSubmit={() => void sendRangeTicket()}
+          onDismiss={() => setRangeDismissed(true)}
+          submitting={sending}
+          error={sendError}
+        />
+      </Panel>
+    );
   }
 
   if (phase === "contact") {
