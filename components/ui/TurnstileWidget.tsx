@@ -66,8 +66,15 @@ export function TurnstileWidget({
   const ref = useRef<HTMLDivElement>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
+  // StrictMode runs effects twice on mount, which rendered two widgets and
+  // left a stray hidden response field behind. Harmless — the token comes from
+  // the callback, not the field — but it doubles the challenge work and makes
+  // the DOM confusing to debug.
+  const rendered = useRef(false);
+
   useEffect(() => {
-    if (!siteKey || !ref.current) return;
+    if (!siteKey || !ref.current || rendered.current) return;
+    rendered.current = true;
     let widgetId: string | undefined;
     let cancelled = false;
 
@@ -93,6 +100,7 @@ export function TurnstileWidget({
 
     return () => {
       cancelled = true;
+      rendered.current = false;
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
     };
     // onToken is a setState wrapper from the parent; re-running would re-render
