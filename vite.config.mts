@@ -27,7 +27,14 @@ export default defineConfig({
     "process.env.NEXT_PUBLIC_APP_ORIGIN": JSON.stringify(
       process.env.NEXT_PUBLIC_APP_ORIGIN ?? "",
     ),
+    "process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY": JSON.stringify(
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+    ),
     "process.env.NODE_ENV": JSON.stringify("production"),
+    // Backstop: any process.env.* reference added later and not listed above
+    // would otherwise survive into the bundle and throw "process is not
+    // defined" in the browser, taking its component down with it.
+    "process.env": "({})",
   },
   build: {
     outDir: "public/widget",
