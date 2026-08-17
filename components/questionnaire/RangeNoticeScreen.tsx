@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import type { Contact } from "@/lib/storage/types";
 import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 
@@ -39,6 +40,7 @@ export function RangeNoticeScreen({
   onDismiss,
   submitting,
   error,
+  onToken,
 }: {
   productLabel: string | null;
   contact: Contact | null;
@@ -52,6 +54,7 @@ export function RangeNoticeScreen({
   onDismiss: () => void;
   submitting: boolean;
   error: string | null;
+  onToken: (token: string | null) => void;
 }) {
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +144,8 @@ export function RangeNoticeScreen({
           </ul>
         )}
       </div>
+
+      <TurnstileWidget onToken={onToken} />
 
       {touched && !ready && (
         <p className="mt-3 text-sm text-danger">

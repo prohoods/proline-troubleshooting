@@ -4,6 +4,7 @@ import { aiConfigured } from "@/lib/ai/openai";
 import { buildCaseConfirmation } from "@/lib/email/caseConfirmation";
 import { emailConfigured, sendEmail } from "@/lib/email/resend";
 import { corsPreflight, withCors } from "@/lib/cors";
+import { verifyTurnstile } from "@/lib/security/turnstile";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import type { RunAnswer } from "@/lib/storage/types";
 import type {
@@ -163,6 +164,16 @@ export async function POST(request: Request) {
   if (!email || !EMAIL_RE.test(email))
     return fail("Please enter a valid email address.", 400);
   if (!message) return fail("Please describe the problem.", 400);
+
+  // ---- Bot check ------------------------------------------------------------
+  // Before any paid work. Everything downstream of here — the Stopgap case, the
+  // AI pre-diagnosis, the confirmation email — costs money per call.
+  if (!(await verifyTurnstile(str("turnstileToken") || null, ip))) {
+    return fail(
+      "We couldn't verify that request came from a browser. Please reload the page and try again.",
+      403,
+    );
+  }
 
   // ---- Photos: enforce limits, base64-encode server-side --------------------
   const files = form

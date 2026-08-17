@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import type { Contact } from "@/lib/storage/types";
 import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 
@@ -24,6 +25,7 @@ export function ContactStep({
   submitting,
   error,
   complete,
+  onToken,
 }: {
   value: Contact | null;
   onChange: (c: Contact) => void;
@@ -34,6 +36,7 @@ export function ContactStep({
   /** True when the order already gave us usable details — changes the ask from
    *  "we need these" to "check these are right". */
   complete: boolean;
+  onToken: (token: string | null) => void;
 }) {
   const [touched, setTouched] = useState(false);
   const c = value ?? { name: "", email: "", phone: "" };
@@ -54,6 +57,8 @@ export function ContactStep({
       <div className="mt-5">
         <ContactForm value={value} onChange={onChange} />
       </div>
+
+      <TurnstileWidget onToken={onToken} />
 
       {touched && !ready && (
         <p className="mt-3 text-sm text-danger">

@@ -93,6 +93,9 @@ export function Troubleshooter({
   const [rangeDismissed, setRangeDismissed] = useState(false);
   const [rangeDescription, setRangeDescription] = useState("");
   const [rangePhotos, setRangePhotos] = useState<File[]>([]);
+  // Turnstile proof-of-humanity, attached to the submission. Null until the
+  // challenge resolves, or when Turnstile isn't configured at all.
+  const [botToken, setBotToken] = useState<string | null>(null);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -317,6 +320,7 @@ export function Troubleshooter({
         fd.set("orderNumber", selectedOrder.orderName.replace(/^#/, ""));
       fd.set("troubleshootingSummary", summary);
       if (runContext) fd.set("runContext", runContext);
+      if (botToken) fd.set("turnstileToken", botToken);
       for (const p of processed) fd.append("images", p, p.name);
 
       const res = await fetch(apiUrl("/api/support"), {
@@ -398,6 +402,7 @@ export function Troubleshooter({
       if (selectedOrder?.orderName)
         fd.set("orderNumber", selectedOrder.orderName.replace(/^#/, ""));
       fd.set("troubleshootingSummary", summary);
+      if (botToken) fd.set("turnstileToken", botToken);
       for (const p of processed) fd.append("images", p, p.name);
 
       const res = await fetch(apiUrl("/api/support"), { method: "POST", body: fd });
@@ -533,6 +538,7 @@ export function Troubleshooter({
           onDismiss={() => setRangeDismissed(true)}
           submitting={sending}
           error={sendError}
+          onToken={setBotToken}
         />
       </Panel>
     );
@@ -551,6 +557,7 @@ export function Troubleshooter({
           complete={Boolean(
             effectiveContact?.name.trim() && effectiveContact?.email.trim(),
           )}
+          onToken={setBotToken}
         />
       </Panel>
     );
