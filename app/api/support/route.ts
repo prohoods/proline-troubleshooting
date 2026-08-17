@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
 import { aiConfigured } from "@/lib/ai/openai";
+import { buildCaseConfirmation } from "@/lib/email/caseConfirmation";
+import { emailConfigured, sendEmail } from "@/lib/email/resend";
 import { corsPreflight, withCors } from "@/lib/cors";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import type { RunAnswer } from "@/lib/storage/types";
@@ -251,6 +253,25 @@ export async function POST(request: Request) {
       .json()
       .catch(() => null)) as SupportApiSuccess | null;
     if (data?.Success && typeof data.CaseId === "number") {
+      // Acknowledgement to the customer. Best-effort, and awaited only so the
+      // serverless function isn't torn down mid-flight: the case already
+      // exists and the customer has already been told it worked, so an email
+      // failure must never become an error they see.
+      if (emailConfigured()) {
+        const mail = buildCaseConfirmation({
+          name: body.name,
+          caseId: data.CaseId,
+          model: body.model,
+          attachedImages: data.AttachedImages ?? images.length,
+        });
+        const id = await sendEmail({ to: body.email, ...mail });
+        if (!id) {
+          console.error(
+            `[support] confirmation email failed for case ${data.CaseId}`,
+          );
+        }
+      }
+
       // Correlates the logged request above with the case it created.
       if (debugLog) {
         console.log(
