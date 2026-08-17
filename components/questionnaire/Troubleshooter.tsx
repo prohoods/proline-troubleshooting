@@ -204,7 +204,7 @@ export function Troubleshooter({
   const next = () => {
     if (!flow || !current || !isAnswered(current, answers)) return;
     const nextSteps = buildSteps(flow, answers);
-    if (current.terminal && safeIndex + 1 >= nextSteps.length) {
+    if (safeIndex + 1 >= nextSteps.length) {
       if (mode === "agent") {
         setPhase("diagnosis");
         void runDiagnosis();
@@ -492,6 +492,12 @@ export function Troubleshooter({
       <Panel>
         <QuestionScreen
         mode={mode}
+        // Only genuinely last once the current question is answered: an
+        // unanswered branch-selector is the end of the *known* step list, but
+        // answering it appends that branch's questions. Without the guard the
+        // issue-type screen offers "Send to support" before you've chosen an
+        // issue.
+        isLast={isAnswered(current, answers) && safeIndex + 1 >= steps.length}
         question={current}
         answers={answers}
         section={sectionLabel(flow, answers, current)}

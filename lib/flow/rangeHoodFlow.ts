@@ -37,16 +37,6 @@ const uploadMedia = (id: string, legacyLabel = "QUESTION 5"): Question => ({
   optional: true,
 });
 
-const additionalInfo = (id: string, legacyLabel: string): Question => ({
-  id,
-  legacyLabel,
-  prompt: "Additional information",
-  type: "text",
-  optional: true,
-  terminal: true,
-  placeholder: "Anything else we should know? (optional)",
-});
-
 // The list of attachments requested at the end of the Hood Performance branch.
 const uploadChecklist = o(
   "Front view showing entire grill and hood",
@@ -342,7 +332,6 @@ export const rangeHoodFlow: CategoryFlow = {
               optional: true,
               options: uploadChecklist,
             },
-            additionalInfo("hp_in_q28", "QUESTION 28"),
           ],
         },
         {
@@ -543,7 +532,6 @@ export const rangeHoodFlow: CategoryFlow = {
               optional: true,
               options: uploadChecklist,
             },
-            additionalInfo("hp_out_q28", "QUESTION 28"),
           ],
         },
       ],
@@ -599,7 +587,6 @@ export const rangeHoodFlow: CategoryFlow = {
           type: "upload",
           optional: true,
         },
-        additionalInfo("blower_q11", "QUESTION 11"),
       ],
     },
 
@@ -655,7 +642,6 @@ export const rangeHoodFlow: CategoryFlow = {
           type: "upload",
           optional: true,
         },
-        additionalInfo("touch_q10", "QUESTION 10"),
       ],
     },
 
@@ -713,7 +699,6 @@ export const rangeHoodFlow: CategoryFlow = {
           type: "upload",
           optional: true,
         },
-        additionalInfo("light_q11", "QUESTION 11"),
       ],
     },
 
@@ -760,7 +745,6 @@ export const rangeHoodFlow: CategoryFlow = {
           type: "upload",
           optional: true,
         },
-        additionalInfo("elec_q10", "QUESTION 10"),
       ],
     },
 
@@ -808,7 +792,6 @@ export const rangeHoodFlow: CategoryFlow = {
           type: "upload",
           optional: true,
         },
-        additionalInfo("vib_q10", "QUESTION 10"),
       ],
     },
 
@@ -820,7 +803,6 @@ export const rangeHoodFlow: CategoryFlow = {
       questions: [
         describe("other_q4"),
         uploadMedia("other_q5"),
-        additionalInfo("other_q6", "QUESTION 6"),
       ],
     },
   ],

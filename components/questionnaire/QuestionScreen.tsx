@@ -27,6 +27,7 @@ export function QuestionScreen({
   onBack,
   onContinue,
   mode = "agent",
+  isLast = false,
   selectedOrder,
   onSelectOrder,
   contact,
@@ -44,6 +45,8 @@ export function QuestionScreen({
   onBack?: () => void;
   onContinue: () => void;
   mode?: AppMode;
+  /** True when no further questions follow, so this submits rather than advances. */
+  isLast?: boolean;
   selectedOrder: SelectedOrder | null;
   onSelectOrder: (sel: SelectedOrder | null) => void;
   contact: Contact | null;
@@ -172,7 +175,7 @@ export function QuestionScreen({
           <span />
         )}
         <Button onClick={onContinue} disabled={!canContinue}>
-          {question.terminal
+          {isLast
             ? mode === "customer"
               ? "Send to support"
               : "See diagnosis"
@@ -181,7 +184,7 @@ export function QuestionScreen({
         </Button>
       </div>
 
-      {question.optional && !question.terminal && (
+      {question.optional && !isLast && (
         <p className="mt-3 text-right text-xs text-muted">
           Optional — you can skip this.
         </p>

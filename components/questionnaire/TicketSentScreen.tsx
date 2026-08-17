@@ -37,7 +37,7 @@ export function TicketSentScreen({
             Thanks — we&apos;ve got everything we need.
           </h2>
           <p className="mt-3 text-muted">
-            A Proline specialist will email you within one business day.
+            A Proline specialist will email you within one to two business days.
           </p>
         </div>
       </div>
