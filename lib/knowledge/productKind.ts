@@ -18,6 +18,8 @@
  * No trailing boundary: a customer types "plsr36" as readily as "PLSR 36", and
  * \b never matches between a letter and a digit. No hood code begins PLSR/PLST.
  */
+const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
 const RANGE_CODES = /\bPL(?:SR|ST)/i;
 
 /**
@@ -36,6 +38,67 @@ const RANGE_PHRASES = [
   /\bcooktop\b/i,
   /\boven\b/i,
 ];
+
+/**
+ * Hood model prefixes, taken from the spec-sheet catalogue rather than a
+ * pattern — a generic /PL[A-Z]{2,3}/ also matches ordinary words like "PLUS".
+ * PLSR and PLST are deliberately absent: those are the cooking appliances.
+ */
+const HOOD_PREFIXES = [
+  "PLFI",
+  "PLFL",
+  "PLFW",
+  "PLGI",
+  "PLGL",
+  "PLGW",
+  "PLJI",
+  "PLJL",
+  "PLJW",
+  "PLSI",
+  "PLSW",
+];
+
+/** Hood product families that carry no PL code. */
+const HOOD_NAMES = [
+  /\brange hood\b/i,
+  /\bhood\b/i,
+  /\binsert\b/i,
+  /\bliner\b/i,
+  /\bchimney\b/i,
+  /\bblower\b/i,
+  /\bbaffle filter\b/i,
+  /\bhurricane\b/i,
+  /\bvexair\b/i,
+  /\brecirc\b/i,
+  /\bprosi\b|\bprosw\b|\bprovi\b|\bprov\b/i,
+  // The BBQ line is outdoor hoods, not grills.
+  /\bbbq\b/i,
+  /\bunder-?cabinet\b/i,
+  /\bwall mount\b/i,
+  /\bisland\b/i,
+];
+
+/**
+ * True when the text clearly identifies a range hood, not a cooking appliance.
+ *
+ * The mirror of looksLikeRange, for someone who lands in the Ranges guide with
+ * a hood. Same bias: a false positive drags a range owner into the wrong guide,
+ * which is worse than a false negative, so anything naming a range or cooktop
+ * is never treated as a hood.
+ */
+export function looksLikeHood(...hints: (string | null | undefined)[]): boolean {
+  for (const hint of hints) {
+    if (!hint) continue;
+    const t = hint.trim();
+    if (!t) continue;
+    if (looksLikeRange(t)) continue;
+    // Compare on the normalised form so "PLJW 104", "pljw-104", and "PLJW104"
+    // all read the same.
+    if (HOOD_PREFIXES.some((code) => norm(t).includes(code))) return true;
+    if (HOOD_NAMES.some((re) => re.test(t))) return true;
+  }
+  return false;
+}
 
 /** True when the text clearly identifies a cooking appliance, not a hood. */
 export function looksLikeRange(...hints: (string | null | undefined)[]): boolean {

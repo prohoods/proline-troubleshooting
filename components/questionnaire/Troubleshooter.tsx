@@ -18,7 +18,7 @@ import {
   sectionLabel,
   selectedIssueLabels,
 } from "@/lib/flow/engine";
-import { looksLikeRange } from "@/lib/knowledge/productKind";
+import { looksLikeHood, looksLikeRange } from "@/lib/knowledge/productKind";
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
 import type { Contact, RunFeedback } from "@/lib/storage/types";
@@ -32,7 +32,7 @@ import { CategoryScreen } from "./CategoryScreen";
 import { ContactStep } from "./ContactStep";
 import { DiagnosisScreen } from "./DiagnosisScreen";
 import { QuestionScreen } from "./QuestionScreen";
-import { RangeNoticeScreen } from "./RangeNoticeScreen";
+import { MisroutedScreen } from "./MisroutedScreen";
 import { SafetyStopScreen } from "./SafetyStopScreen";
 import { TicketSentScreen } from "./TicketSentScreen";
 import { WelcomeScreen } from "./WelcomeScreen";
@@ -149,19 +149,36 @@ export function Troubleshooter({
     return null;
   }, [contact, selectedOrder]);
 
-  // The guide is hood-only. A PLSR range or PLST range top gets diverted rather
-  // than walked through ductwork and baffle-filter questions.
+  // Misrouting works both ways: a range owner in the hood guide would be asked
+  // about ducting and baffle filters, and a hood owner in the ranges guide
+  // about burners and ovens. Either way the agent receives answers that don't
+  // describe the product.
+  //
+  // Crucially this is scoped to the CURRENT category — checking "is this a
+  // range" regardless of which guide you're in re-triggers the diversion after
+  // the switch, which is an unescapable loop.
   const manualModel =
-    typeof answers["p_hood_model"] === "string" ? answers["p_hood_model"] : null;
-  const isRange =
-    mode === "customer" &&
-    !rangeDismissed &&
-    looksLikeRange(
-      selectedOrder?.product.title,
-      selectedOrder?.product.sku,
-      manualModel,
-    );
-  const rangeLabel = selectedOrder?.product.title ?? manualModel ?? null;
+    typeof answers["p_hood_model"] === "string"
+      ? answers["p_hood_model"]
+      : typeof answers["r_model"] === "string"
+        ? answers["r_model"]
+        : null;
+  const productHints: (string | null | undefined)[] = [
+    selectedOrder?.product.title,
+    selectedOrder?.product.sku,
+    manualModel,
+  ];
+
+  const misroutedTo: "ranges" | "range_hood" | null =
+    mode !== "customer" || rangeDismissed
+      ? null
+      : category?.id === "range_hood" && looksLikeRange(...productHints)
+        ? "ranges"
+        : category?.id === "ranges" && looksLikeHood(...productHints)
+          ? "range_hood"
+          : null;
+
+  const productLabel = selectedOrder?.product.title ?? manualModel ?? null;
 
   // Gas emergency reported on the ranges flow: stop everything. No ticket, no
   // email — this needs a faster answer than we can give.
@@ -190,19 +207,24 @@ export function Troubleshooter({
    * the found order is kept and re-seeded as the ranges lookup answer, because
    * making someone find their order twice is the fastest way to lose them.
    */
-  const switchToRanges = () => {
-    const ranges = categories.find((c) => c.id === "ranges");
-    if (!ranges?.flow) return;
-    const carried = answers["p_order_lookup"];
+  const switchCategory = (targetId: "ranges" | "range_hood") => {
+    const target = categories.find((c) => c.id === targetId);
+    if (!target?.flow) return;
+    // The two flows share no question ids, so the answers go — but the found
+    // order is carried across under the new flow's lookup id, because making
+    // someone find their order twice is the fastest way to lose them.
+    const fromId = targetId === "ranges" ? "p_order_lookup" : "r_order_lookup";
+    const toId = targetId === "ranges" ? "r_order_lookup" : "p_order_lookup";
+    const carried = answers[fromId];
     setAnswers(
       typeof carried === "string" && carried !== NO_ORDER_VALUE
-        ? { r_order_lookup: carried }
+        ? { [toId]: carried }
         : {},
     );
     setStepIndex(0);
     setUploadFiles({});
     setAiDiagnoses(null);
-    setCategory(ranges);
+    setCategory(target);
     setPhase("questions");
   };
 
@@ -488,12 +510,13 @@ export function Troubleshooter({
     );
   }
 
-  if (phase === "questions" && isRange) {
+  if (phase === "questions" && misroutedTo) {
     return (
       <Panel>
-        <RangeNoticeScreen
-          productLabel={rangeLabel}
-          onSwitch={switchToRanges}
+        <MisroutedScreen
+          productLabel={productLabel}
+          target={misroutedTo}
+          onSwitch={() => switchCategory(misroutedTo)}
           onDismiss={() => setRangeDismissed(true)}
         />
       </Panel>

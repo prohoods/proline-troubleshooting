@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Contact } from "@/lib/storage/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,7 +17,21 @@ export function ContactForm({
   onChange: (c: Contact) => void;
 }) {
   const c: Contact = value ?? { name: "", email: "", phone: "" };
-  const set = (patch: Partial<Contact>) => onChange({ ...c, ...patch });
+
+  // Merge from a ref, not from the `value` prop. Several fields can change
+  // before React re-renders — browser autofill routinely fills name, email,
+  // and phone in one batch — and building each update from the prop means every
+  // handler sees the same stale value, so the last one wipes the others and the
+  // form never registers as complete.
+  const latest = useRef<Contact>(c);
+  useEffect(() => {
+    if (value) latest.current = value;
+  }, [value]);
+
+  const set = (patch: Partial<Contact>) => {
+    latest.current = { ...latest.current, ...patch };
+    onChange(latest.current);
+  };
   const emailInvalid = c.email.trim().length > 0 && !isValidEmail(c.email);
 
   return (
