@@ -18,6 +18,7 @@ import {
   sectionLabel,
   selectedIssueLabels,
 } from "@/lib/flow/engine";
+import { turnstileEnabled } from "@/components/ui/TurnstileWidget";
 import { looksLikeHood, looksLikeRange } from "@/lib/knowledge/productKind";
 import { findSpec, type SpecMatch } from "@/lib/knowledge/specSheets";
 import type { SelectedOrder } from "@/lib/shopify/types";
@@ -537,6 +538,7 @@ export function Troubleshooter({
             effectiveContact?.name.trim() && effectiveContact?.email.trim(),
           )}
           onToken={setBotToken}
+          tokenReady={!turnstileEnabled() || botToken !== null}
         />
       </Panel>
     );

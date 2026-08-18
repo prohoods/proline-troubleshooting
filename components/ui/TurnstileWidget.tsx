@@ -71,6 +71,11 @@ function lightDomAnchor(from: HTMLElement): HTMLElement {
   return host?.parentElement ?? document.body;
 }
 
+/** Whether a bot check is configured at all — the flow runs without one. */
+export function turnstileEnabled(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim());
+}
+
 export function TurnstileWidget({
   onToken,
 }: {
@@ -84,9 +89,18 @@ export function TurnstileWidget({
     let widgetId: string | undefined;
     let cancelled = false;
 
+    // Match the widget's own content column and centre it, so an interactive
+    // challenge lands directly under the form rather than adrift at the edge of
+    // the page where nobody looks for it.
     const container = document.createElement("div");
     container.setAttribute("data-proline-turnstile", "");
-    container.style.margin = "12px 0";
+    Object.assign(container.style, {
+      maxWidth: "768px",
+      margin: "0 auto 24px",
+      padding: "0 24px",
+      display: "flex",
+      justifyContent: "center",
+    });
     lightDomAnchor(marker.current).appendChild(container);
 
     loadScript()

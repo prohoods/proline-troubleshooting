@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Icon } from "@/components/ui/Icon";
-import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
+import { TurnstileWidget, turnstileEnabled } from "@/components/ui/TurnstileWidget";
 import type { Contact } from "@/lib/storage/types";
 import { ContactForm, isValidEmail } from "./inputs/ContactForm";
 
@@ -26,6 +26,7 @@ export function ContactStep({
   error,
   complete,
   onToken,
+  tokenReady,
 }: {
   value: Contact | null;
   onChange: (c: Contact) => void;
@@ -37,10 +38,16 @@ export function ContactStep({
    *  "we need these" to "check these are right". */
   complete: boolean;
   onToken: (token: string | null) => void;
+  /** False while the bot check is still running. */
+  tokenReady: boolean;
 }) {
   const [touched, setTouched] = useState(false);
   const c = value ?? { name: "", email: "", phone: "" };
-  const ready = c.name.trim().length > 0 && isValidEmail(c.email);
+  const detailsOk = c.name.trim().length > 0 && isValidEmail(c.email);
+  // Submitting before Cloudflare has issued its pass gets a hard rejection from
+  // the server, which reads as a broken form on the very last step. Wait for it.
+  const waitingOnCheck = turnstileEnabled() && !tokenReady;
+  const ready = detailsOk && !waitingOnCheck;
 
   return (
     <section>
@@ -74,9 +81,15 @@ export function ContactStep({
 
       <TurnstileWidget onToken={onToken} />
 
-      {touched && !ready && (
+      {touched && !detailsOk && (
         <p className="mt-3 text-sm text-danger">
           Please enter your name and a valid email address.
+        </p>
+      )}
+      {detailsOk && waitingOnCheck && (
+        <p className="mt-3 text-sm text-muted">
+          Just a moment — we&apos;re checking you&apos;re not a robot. If a
+          checkbox appears below, tick it to continue.
         </p>
       )}
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
@@ -94,9 +107,9 @@ export function ContactStep({
             setTouched(true);
             if (ready) onSubmit();
           }}
-          disabled={submitting}
+          disabled={submitting || waitingOnCheck}
         >
-          {submitting ? "Sending…" : "Send to support"}
+          {submitting ? "Sending…" : waitingOnCheck ? "Checking…" : "Send to support"}
           <Icon name="arrowRight" className="h-4 w-4" />
         </Button>
       </div>
