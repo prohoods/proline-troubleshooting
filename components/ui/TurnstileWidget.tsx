@@ -3,13 +3,18 @@
 import { useEffect, useRef } from "react";
 
 /*
- * Cloudflare Turnstile, rendered explicitly into a container we own.
+ * Cloudflare Turnstile.
  *
- * Two things make this awkward here. The widget lives inside a shadow root, so
- * the usual auto-render (which scans the document for .cf-turnstile) never sees
- * it — hence explicit rendering against a ref. And the script is loaded once
- * into the document head rather than per-mount, because Turnstile registers a
- * single global.
+ * The widget must be rendered into the LIGHT DOM, not into the shadow root the
+ * rest of this app lives in. Turnstile will happily create its hidden response
+ * field inside a shadow root but never runs the challenge there — the tell is a
+ * mounted widget with zero iframes — so no token is ever issued and every
+ * submission is rejected server-side.
+ *
+ * So this component renders nothing itself: on mount it appends a container
+ * next to the shadow host (in the page's own DOM) and renders Turnstile there.
+ * `interaction-only` keeps it invisible unless Cloudflare actually needs to
+ * challenge someone, in which case it appears just above the form.
  *
  * Renders nothing at all when no site key is configured, so the flow works
  * unchanged before the keys exist.
@@ -58,34 +63,40 @@ function loadScript(): Promise<void> {
   });
 }
 
+/** The element in the page's own DOM that hosts our shadow root. */
+function lightDomAnchor(from: HTMLElement): HTMLElement {
+  const root = from.getRootNode();
+  const host =
+    root instanceof ShadowRoot ? (root.host as HTMLElement | null) : null;
+  return host?.parentElement ?? document.body;
+}
+
 export function TurnstileWidget({
   onToken,
 }: {
   onToken: (token: string | null) => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const marker = useRef<HTMLSpanElement>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
-  // StrictMode runs effects twice on mount, which rendered two widgets and
-  // left a stray hidden response field behind. Harmless — the token comes from
-  // the callback, not the field — but it doubles the challenge work and makes
-  // the DOM confusing to debug.
-  const rendered = useRef(false);
-
   useEffect(() => {
-    if (!siteKey || !ref.current || rendered.current) return;
-    rendered.current = true;
+    if (!siteKey || !marker.current) return;
     let widgetId: string | undefined;
     let cancelled = false;
 
+    const container = document.createElement("div");
+    container.setAttribute("data-proline-turnstile", "");
+    container.style.margin = "12px 0";
+    lightDomAnchor(marker.current).appendChild(container);
+
     loadScript()
       .then(() => {
-        if (cancelled || !ref.current || !window.turnstile) return;
-        widgetId = window.turnstile.render(ref.current, {
+        if (cancelled || !window.turnstile) return;
+        widgetId = window.turnstile.render(container, {
           sitekey: siteKey,
           callback: (token) => onToken(token),
-          // A failed or expired challenge clears the token, so the submit
-          // button can't send a stale one.
+          // A failed or expired challenge clears the token so a stale one is
+          // never submitted.
           "error-callback": () => onToken(null),
           "expired-callback": () => onToken(null),
           appearance: "interaction-only",
@@ -93,21 +104,22 @@ export function TurnstileWidget({
         });
       })
       .catch(() => {
-        // Script blocked (extension, network). The server decides what to do
-        // with a missing token; the customer isn't shown a dead end here.
+        // Script blocked (extension, network). The server decides what happens
+        // with a missing token; no dead end is shown here.
         onToken(null);
       });
 
     return () => {
       cancelled = true;
-      rendered.current = false;
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
+      container.remove();
     };
-    // onToken is a setState wrapper from the parent; re-running would re-render
-    // the widget and invalidate a good token.
+    // onToken is a setState wrapper from the parent; re-running would rebuild
+    // the widget and throw away a good token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey]);
 
+  // Only a positioning marker — the widget itself lives outside the shadow root.
   if (!siteKey) return null;
-  return <div ref={ref} className="mt-4" />;
+  return <span ref={marker} hidden />;
 }
