@@ -30,12 +30,14 @@ export async function uploadVideo(
 ): Promise<string> {
   const safe = file.name.replace(/[^\w.-]+/g, "_").slice(-80);
   const result = await uploadPresigned(`support-video/${Date.now()}-${safe}`, file, {
-    access: "public",
+    access: "private",
     handleUploadUrl: apiUrl("/api/video-upload"),
     contentType: file.type || "video/mp4",
     onUploadProgress: ({ percentage }) => onProgress(percentage),
   });
-  return result.url;
+  // The storage URL is private and answers 403, so the ticket gets our own
+  // link, which signs a fresh one each time an agent opens it.
+  return apiUrl(`/api/video/${result.pathname.split("/").map(encodeURIComponent).join("/")}`);
 }
 
 /** The agent-facing block naming each video and where to watch it. */
