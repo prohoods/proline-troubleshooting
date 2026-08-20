@@ -27,6 +27,11 @@ import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { apiUrl } from "@/lib/apiBase";
 import { Panel } from "@/components/ui/Panel";
 import { downscaleImage } from "@/lib/images/downscale";
+import {
+  attachmentNote,
+  fitToBudget,
+  planAttachments,
+} from "@/lib/support/attachments";
 import { buildMessage, buildSummary } from "@/lib/support/summary";
 import type { SupportResult } from "@/lib/support/types";
 import { CategoryScreen } from "./CategoryScreen";
@@ -334,6 +339,10 @@ export function Troubleshooter({
     setSendError(null);
     setPhase("sending");
     try {
+      // Video is never uploaded — Stopgap only takes images, and a phone or
+      // drone clip is large enough to kill the request outright. It's named in
+      // the ticket instead so the agent can ask for it.
+      const plan = planAttachments(photos);
       const summary = buildSummary(
         selectedOrder,
         c,
@@ -350,7 +359,17 @@ export function Troubleshooter({
           ? answers["p_hood_model"]
           : "");
 
-      const processed = await Promise.all(photos.slice(0, 8).map(downscaleImage));
+      // Downscale per file: one awkward image shouldn't sink the submission.
+      // The size budget applies to the compressed results, not the originals.
+      const downscaled = await Promise.all(
+        plan.images.map((f) => downscaleImage(f).catch(() => f)),
+      );
+      const { kept: processed, dropped } = fitToBudget(downscaled);
+      plan.droppedNames.push(...dropped);
+
+      // Assembled here, not earlier: the dropped list isn't known until the
+      // budget has been applied, and the agent needs to see what's missing.
+      const summaryWithMedia = `${summary}${attachmentNote(plan)}`;
 
       const fd = new FormData();
       fd.set("name", c.name.trim());
@@ -371,7 +390,7 @@ export function Troubleshooter({
       if (model) fd.set("model", model);
       if (selectedOrder?.orderName)
         fd.set("orderNumber", selectedOrder.orderName.replace(/^#/, ""));
-      fd.set("troubleshootingSummary", summary);
+      fd.set("troubleshootingSummary", summaryWithMedia);
       if (runContext) fd.set("runContext", runContext);
       if (botToken) fd.set("turnstileToken", botToken);
       for (const p of processed) fd.append("images", p, p.name);
