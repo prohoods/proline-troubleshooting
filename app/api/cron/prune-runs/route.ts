@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pruneVideos } from "@/lib/storage/blob";
+import { pruneBlobs } from "@/lib/storage/blob";
 import { postgresConfigured, pruneRuns } from "@/lib/storage/postgres";
 
 /**
@@ -45,13 +45,16 @@ export async function GET(request: Request) {
   const deleteDays = num(process.env.RUN_RETENTION_DAYS, 730);
   const videoDays = num(process.env.VIDEO_RETENTION_DAYS, 90);
 
-  // Videos are pruned even with no database configured — they're stored
-  // independently, and skipping them would leave them there forever.
+  // Stored files are pruned even with no database configured — they live
+  // outside it, and skipping them would leave them there forever. Videos go on
+  // their own shorter clock; PDFs go when the row they describe does.
   let videosDeleted = 0;
+  let pdfsDeleted = 0;
   try {
-    videosDeleted = await pruneVideos(videoDays);
+    videosDeleted = await pruneBlobs("support-video/", videoDays);
+    pdfsDeleted = await pruneBlobs("runs/", deleteDays);
   } catch (e) {
-    console.error("[prune-runs] video prune failed:", e instanceof Error ? e.message : e);
+    console.error("[prune-runs] file prune failed:", e instanceof Error ? e.message : e);
   }
 
   if (!postgresConfigured()) {
@@ -60,13 +63,14 @@ export async function GET(request: Request) {
       skipped: "no database configured",
       videoDays,
       videosDeleted,
+      pdfsDeleted,
     });
   }
 
   try {
     const result = await pruneRuns({ piiDays, deleteDays });
     console.log(
-      `[prune-runs] anonymised=${result.anonymised} deleted=${result.deleted} videos=${videosDeleted} (pii>${piiDays}d, rows>${deleteDays}d, videos>${videoDays}d)`,
+      `[prune-runs] anonymised=${result.anonymised} deleted=${result.deleted} videos=${videosDeleted} pdfs=${pdfsDeleted} (pii>${piiDays}d, rows>${deleteDays}d, videos>${videoDays}d)`,
     );
     return NextResponse.json({
       ok: true,
@@ -74,6 +78,7 @@ export async function GET(request: Request) {
       deleteDays,
       videoDays,
       videosDeleted,
+      pdfsDeleted,
       ...result,
     });
   } catch (e) {
