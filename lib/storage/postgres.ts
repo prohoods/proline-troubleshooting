@@ -40,9 +40,15 @@ function ensureTable(): Promise<unknown> {
         rating       int,
         comment      text,
         agent_notes  text,
-        pdf_url      text
+        pdf_url      text,
+        hidden       boolean NOT NULL DEFAULT false
       )
-    `;
+    `.then(
+      // Existing installs predate the column, and CREATE TABLE IF NOT EXISTS
+      // won't add it to a table that's already there.
+      () =>
+        db()`ALTER TABLE runs ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false`,
+    );
   }
   return ensured;
 }
@@ -166,15 +172,15 @@ export async function runStats(days: number): Promise<{
   const since = `${days} days`;
 
   const [total, byDay, byCategory, byBranch] = await Promise.all([
-    db()`SELECT count(*)::int AS n FROM runs WHERE created_at > now() - (${since})::interval`,
+    db()`SELECT count(*)::int AS n FROM runs WHERE hidden = false AND created_at > now() - (${since})::interval`,
     db()`SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, count(*)::int AS runs
-           FROM runs WHERE created_at > now() - (${since})::interval
+           FROM runs WHERE hidden = false AND created_at > now() - (${since})::interval
           GROUP BY 1 ORDER BY 1 DESC`,
     db()`SELECT category, count(*)::int AS runs
-           FROM runs WHERE created_at > now() - (${since})::interval
+           FROM runs WHERE hidden = false AND created_at > now() - (${since})::interval
           GROUP BY 1 ORDER BY 2 DESC`,
     db()`SELECT category, branch_key AS branch, count(*)::int AS runs
-           FROM runs WHERE created_at > now() - (${since})::interval
+           FROM runs WHERE hidden = false AND created_at > now() - (${since})::interval
           GROUP BY 1, 2 ORDER BY 3 DESC`,
   ]);
 
@@ -184,4 +190,102 @@ export async function runStats(days: number): Promise<{
     byCategory: byCategory as { category: string; runs: number }[],
     byBranch: byBranch as { category: string; branch: string | null; runs: number }[],
   };
+}
+
+/**
+ * Recent submissions, enough to recognise which were real.
+ *
+ * The stats page counts rows; this is how a human tells a customer apart from a
+ * test they ran themselves. It returns contact details, so it stays behind the
+ * admin password — unlike runStats, which is aggregates only.
+ */
+export interface RunSummary {
+  id: string;
+  createdAt: string;
+  category: string;
+  branch: string | null;
+  model: string | null;
+  name: string | null;
+  email: string | null;
+  hidden: boolean;
+}
+
+export async function listRuns(days: number, limit = 300): Promise<RunSummary[]> {
+  if (!postgresConfigured()) return [];
+  await ensureTable();
+
+  const rows = (await db()`
+    SELECT id,
+           created_at,
+           category,
+           branch_key,
+           model,
+           contact_json ->> 'name'  AS name,
+           contact_json ->> 'email' AS email,
+           hidden
+      FROM runs
+     WHERE created_at > now() - (${`${days} days`})::interval
+     ORDER BY created_at DESC
+     LIMIT ${limit}
+  `) as {
+    id: string;
+    created_at: string | Date;
+    category: string;
+    branch_key: string | null;
+    model: string | null;
+    name: string | null;
+    email: string | null;
+    hidden: boolean;
+  }[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: new Date(r.created_at).toISOString(),
+    category: r.category,
+    branch: r.branch_key,
+    model: r.model,
+    name: r.name,
+    email: r.email,
+    hidden: r.hidden,
+  }));
+}
+
+/**
+ * Mark runs as tests, or put them back.
+ *
+ * Deliberately a flag rather than a DELETE: "that was me testing" is a judgement
+ * someone can get wrong, and a row that's merely hidden can be restored. The
+ * retention job clears them out on the usual schedule either way.
+ */
+export async function setRunsHidden(
+  ids: string[],
+  hidden: boolean,
+): Promise<number> {
+  if (!postgresConfigured() || ids.length === 0) return 0;
+  await ensureTable();
+
+  // One statement per id rather than `= ANY($1)`: array binding differs
+  // between Postgres drivers, and this runs on a handful of rows at a time
+  // from a button click, so there is nothing to optimise for.
+  const results = await Promise.all(
+    ids.map(
+      async (id) =>
+        (await db()`UPDATE runs SET hidden = ${hidden} WHERE id = ${id} RETURNING id`) as {
+          id: string;
+        }[],
+    ),
+  );
+  return results.reduce((n, r) => n + r.length, 0);
+}
+
+/** Mark everything before a cut-off as a test — for the pre-launch pile. */
+export async function hideRunsBefore(iso: string): Promise<number> {
+  if (!postgresConfigured()) return 0;
+  await ensureTable();
+  const updated = (await db()`
+    UPDATE runs SET hidden = true
+     WHERE hidden = false AND created_at < ${iso}::timestamptz
+    RETURNING id
+  `) as { id: string }[];
+  return updated.length;
 }

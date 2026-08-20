@@ -21,6 +21,17 @@ interface Stats {
   byBranch: { category: string; branch: string | null; runs: number }[];
 }
 
+interface RunRow {
+  id: string;
+  createdAt: string;
+  category: string;
+  branch: string | null;
+  model: string | null;
+  name: string | null;
+  email: string | null;
+  hidden: boolean;
+}
+
 const STORAGE_KEY = "proline-admin-token";
 const LABELS: Record<string, string> = {
   range_hood: "Range Hoods",
@@ -36,12 +47,27 @@ export default function StatsPage() {
   const tokenRef = useRef<HTMLInputElement>(null);
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [runs, setRuns] = useState<RunRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved && tokenRef.current) tokenRef.current.value = saved;
+  }, []);
+
+  const loadRuns = useCallback(async (t: string, d: number) => {
+    try {
+      const res = await fetch(apiUrl(`/api/admin/runs?days=${d}`), {
+        headers: { "x-admin-token": t.trim() },
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as { runs: RunRow[] };
+      setRuns(json.runs ?? []);
+    } catch {
+      // The list is a convenience; the numbers above are the point.
+    }
   }, []);
 
   const load = useCallback(
@@ -65,16 +91,44 @@ export default function StatsPage() {
         }
         setStats((await res.json()) as Stats);
         window.localStorage.setItem(STORAGE_KEY, t.trim());
+        void loadRuns(t, d);
       } catch {
         setError("Couldn't reach the server.");
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [loadRuns],
   );
 
 
+
+  /**
+   * Flip one or many runs between "counts" and "was a test", then reload.
+   * The numbers above and the dashboard view both read the same table, so they
+   * correct together.
+   */
+  const mark = async (body: Record<string, unknown>) => {
+    const t = tokenRef.current?.value ?? "";
+    if (!t.trim() || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(apiUrl("/api/admin/runs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": t.trim() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        setError("Couldn't update that. Try again in a moment.");
+        return;
+      }
+      await load(t, days);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hiddenCount = runs?.filter((r) => r.hidden).length ?? 0;
 
   const busiest = stats?.byDay.reduce((a, b) => (b.runs > a.runs ? b : a), {
     day: "",
@@ -168,6 +222,15 @@ export default function StatsPage() {
               title="By day"
               rows={stats.byDay.map((d) => [d.day, d.runs])}
             />
+
+            {runs && runs.length > 0 && (
+              <Submissions
+                runs={runs}
+                busy={busy}
+                hiddenCount={hiddenCount}
+                onMark={mark}
+              />
+            )}
           </>
         )}
       </section>
@@ -208,6 +271,103 @@ function Table({ title, rows }: { title: string; rows: [string, number][] }) {
           >
             <span className="text-ink">{label}</span>
             <span className="font-bold text-ink">{n}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The individual submissions behind the counts, with a switch for the ones we
+ * made ourselves.
+ *
+ * Marking is a flag, not a delete: mistaking a real customer for a test is easy
+ * to do and would otherwise be permanent. Excluded rows stay visible here,
+ * greyed out, so they can be put back.
+ */
+function Submissions({
+  runs,
+  busy,
+  hiddenCount,
+  onMark,
+}: {
+  runs: RunRow[];
+  busy: boolean;
+  hiddenCount: number;
+  onMark: (body: Record<string, unknown>) => void | Promise<void>;
+}) {
+  const [cutoff, setCutoff] = useState("");
+
+  const day = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  return (
+    <div className="mt-10">
+      <h2 className="text-lg font-bold text-ink">Submissions</h2>
+      <p className="mt-1 max-w-xl text-sm text-muted">
+        Mark the ones that were you testing and they stop counting — here and on
+        the analytics dashboard. Nothing is deleted, so you can undo it.
+        {hiddenCount > 0 && (
+          <> {hiddenCount} currently excluded.</>
+        )}
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-mist p-4">
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-ink">
+            Exclude everything before
+          </span>
+          <input
+            type="date"
+            value={cutoff}
+            onChange={(e) => setCutoff(e.target.value)}
+            className="rounded-xl border border-field bg-white px-4 py-2.5 text-ink focus:border-sky focus:outline-none"
+          />
+        </label>
+        <Button
+          onClick={() => cutoff && void onMark({ before: cutoff, hidden: true })}
+          disabled={!cutoff || busy}
+        >
+          {busy ? "Working…" : "Exclude them"}
+        </Button>
+        <p className="w-full text-xs text-muted">
+          Quickest way to clear the pile from before the guide went live.
+        </p>
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-2xl border border-line">
+        {runs.map((r, i) => (
+          <div
+            key={r.id}
+            className={`flex items-center justify-between gap-4 px-4 py-3 text-sm ${
+              i % 2 ? "bg-mist/50" : "bg-white"
+            } ${r.hidden ? "opacity-50" : ""}`}
+          >
+            <div className="min-w-0">
+              <p className={`truncate text-ink ${r.hidden ? "line-through" : ""}`}>
+                {r.name?.trim() || "No name"}
+                {r.email && <span className="text-muted"> · {r.email}</span>}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {day(r.createdAt)}
+                {r.model && ` · ${r.model}`}
+                {r.branch && ` · ${r.branch.replace(/^r_/, "").replace(/_/g, " ")}`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void onMark({ ids: [r.id], hidden: !r.hidden })}
+              disabled={busy}
+              className="shrink-0 rounded-lg border border-field px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-sky disabled:opacity-50"
+            >
+              {r.hidden ? "Count it" : "Was a test"}
+            </button>
           </div>
         ))}
       </div>
