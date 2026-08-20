@@ -27,6 +27,7 @@ export function ContactStep({
   complete,
   onToken,
   tokenReady,
+  videoProgress,
 }: {
   value: Contact | null;
   onChange: (c: Contact) => void;
@@ -40,6 +41,8 @@ export function ContactStep({
   onToken: (token: string | null) => void;
   /** False while the bot check is still running. */
   tokenReady: boolean;
+  /** 0-100 while a video is still uploading; null when nothing is pending. */
+  videoProgress: number | null;
 }) {
   const [touched, setTouched] = useState(false);
   const c = value ?? { name: "", email: "", phone: "" };
@@ -47,7 +50,11 @@ export function ContactStep({
   // Submitting before Cloudflare has issued its pass gets a hard rejection from
   // the server, which reads as a broken form on the very last step. Wait for it.
   const waitingOnCheck = turnstileEnabled() && !tokenReady;
-  const ready = detailsOk && !waitingOnCheck;
+  // Sending now would file the case without the video, and the customer would
+  // have no idea it was left behind. They're on the last screen anyway, so the
+  // remaining seconds cost nothing.
+  const waitingOnVideo = videoProgress !== null;
+  const ready = detailsOk && !waitingOnCheck && !waitingOnVideo;
 
   return (
     <section>
@@ -67,7 +74,7 @@ export function ContactStep({
 
       <p className="mt-4 text-xs leading-relaxed text-muted">
         We use these details to answer your request and nothing else. Your
-        answers and photos are stored with your support case — see our{" "}
+        answers, photos and video are stored with your support case — see our{" "}
         <a
           href="https://prolinerangehoods.com/pages/privacy-statement"
           target="_blank"
@@ -92,6 +99,20 @@ export function ContactStep({
           checkbox appears below, tick it to continue.
         </p>
       )}
+      {detailsOk && waitingOnVideo && (
+        <div className="mt-3">
+          <p className="text-sm text-muted">
+            Finishing your video upload — {Math.round(videoProgress)}%. Please
+            keep this page open.
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-mist">
+            <div
+              className="h-full rounded-full bg-sky transition-all"
+              style={{ width: `${Math.max(3, Math.round(videoProgress))}%` }}
+            />
+          </div>
+        </div>
+      )}
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
       <div className="mt-7 flex items-center justify-between">
@@ -107,9 +128,15 @@ export function ContactStep({
             setTouched(true);
             if (ready) onSubmit();
           }}
-          disabled={submitting || waitingOnCheck}
+          disabled={submitting || waitingOnCheck || waitingOnVideo}
         >
-          {submitting ? "Sending…" : waitingOnCheck ? "Checking…" : "Send to support"}
+          {submitting
+            ? "Sending…"
+            : waitingOnVideo
+              ? "Uploading video…"
+              : waitingOnCheck
+                ? "Checking…"
+                : "Send to support"}
           <Icon name="arrowRight" className="h-4 w-4" />
         </Button>
       </div>

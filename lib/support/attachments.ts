@@ -1,11 +1,13 @@
 // Deciding what actually travels with a support case.
 //
-// The upload step accepts video because a rattle or a flame is far easier to
-// show than describe, and the transcript records the filename either way. But
-// video must never be uploaded: Stopgap only accepts images, and a phone or
-// drone clip is hundreds of megabytes, which kills the request long before the
-// server gets a chance to discard it. That failure surfaced to the customer as
-// "we couldn't send your request" on the final step.
+// Photos are attached to the ticket directly. Video is not: Stopgap only takes
+// images, and a phone or drone clip is large enough to kill the request before
+// the server sees it — which reached the customer as "we couldn't send your
+// request" on the final step. Video goes straight from the browser to blob
+// storage instead, and the ticket carries a link (lib/support/videoUpload.ts).
+//
+// The video branch below is a backstop for a clip that slips through as a
+// regular file — it's named for the agent rather than uploaded.
 
 /** Serverless request bodies are small; stay well under the limit. */
 const MAX_TOTAL_BYTES = 3.5 * 1024 * 1024;

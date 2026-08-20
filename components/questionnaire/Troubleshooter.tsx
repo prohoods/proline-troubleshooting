@@ -27,6 +27,7 @@ import type { Answers, AnswerValue, AppMode } from "@/lib/types";
 import { apiUrl } from "@/lib/apiBase";
 import { Panel } from "@/components/ui/Panel";
 import { downscaleImage } from "@/lib/images/downscale";
+import { videoLinksNote, type VideoUpload } from "@/lib/support/videoUpload";
 import {
   attachmentNote,
   fitToBudget,
@@ -85,6 +86,9 @@ export function Troubleshooter({
   // Real photo files captured in the flow, keyed by upload-question id — attached
   // to the support case at the end.
   const [uploadFiles, setUploadFiles] = useState<Record<string, File[]>>({});
+  // Video is tracked separately from photos: it uploads to storage on pick, so
+  // what we hold is a link and a progress figure, not the file itself.
+  const [videos, setVideos] = useState<Record<string, VideoUpload[]>>({});
   // AI-tailored diagnosis: null until fetched; stays null to fall back to the
   // deterministic diagnoses when the LLM is unconfigured or the call fails.
   const [aiDiagnoses, setAiDiagnoses] = useState<Diagnosis[] | null>(null);
@@ -192,6 +196,15 @@ export function Troubleshooter({
 
   // All photos captured across the flow, for the support case.
   const photos = useMemo(() => Object.values(uploadFiles).flat(), [uploadFiles]);
+  const allVideos = useMemo(() => Object.values(videos).flat(), [videos]);
+
+  // Averaged across everything still in flight, so one clip finishing doesn't
+  // send the bar backwards.
+  const videoProgress = useMemo(() => {
+    const pending = allVideos.filter((v) => v.status === "uploading");
+    if (pending.length === 0) return null;
+    return pending.reduce((sum, v) => sum + v.progress, 0) / pending.length;
+  }, [allVideos]);
 
   const setAnswer = (id: string, value: AnswerValue) =>
     setAnswers((prev) => ({ ...prev, [id]: value }));
@@ -202,6 +215,7 @@ export function Troubleshooter({
     setSelectedOrder(null);
     setContact(null);
     setUploadFiles({});
+    setVideos({});
     setAiDiagnoses(null);
     setAiLoading(false);
   };
@@ -229,6 +243,7 @@ export function Troubleshooter({
     );
     setStepIndex(0);
     setUploadFiles({});
+    setVideos({});
     setAiDiagnoses(null);
     setCategory(target);
     setPhase("questions");
@@ -369,7 +384,7 @@ export function Troubleshooter({
 
       // Assembled here, not earlier: the dropped list isn't known until the
       // budget has been applied, and the agent needs to see what's missing.
-      const summaryWithMedia = `${summary}${attachmentNote(plan)}`;
+      const summaryWithMedia = `${summary}${attachmentNote(plan)}${videoLinksNote(allVideos)}`;
 
       const fd = new FormData();
       fd.set("name", c.name.trim());
@@ -558,6 +573,7 @@ export function Troubleshooter({
           )}
           onToken={setBotToken}
           tokenReady={!turnstileEnabled() || botToken !== null}
+          videoProgress={videoProgress}
         />
       </Panel>
     );
@@ -639,7 +655,11 @@ export function Troubleshooter({
         uploadFilesFor={(id) => uploadFiles[id] ?? []}
         onUploadFiles={(id, files) =>
           setUploadFiles((prev) => ({ ...prev, [id]: files }))
-          }
+        }
+        videosFor={(id) => videos[id] ?? []}
+        onVideos={(id, updater) =>
+          setVideos((prev) => ({ ...prev, [id]: updater(prev[id] ?? []) }))
+        }
         />
       </Panel>
     );

@@ -16,6 +16,7 @@ import { ShopifyLookup } from "./inputs/ShopifyLookup";
 import { SingleSelect } from "./inputs/SingleSelect";
 import { TextInput } from "./inputs/TextInput";
 import { UploadStub } from "./inputs/UploadStub";
+import type { VideoUpload } from "@/lib/support/videoUpload";
 
 export function QuestionScreen({
   question,
@@ -35,6 +36,8 @@ export function QuestionScreen({
   onContact,
   uploadFilesFor,
   onUploadFiles,
+  videosFor,
+  onVideos,
 }: {
   question: Question;
   answers: Answers;
@@ -54,6 +57,8 @@ export function QuestionScreen({
   onContact: (c: Contact) => void;
   uploadFilesFor: (id: string) => File[];
   onUploadFiles: (id: string, files: File[]) => void;
+  videosFor: (id: string) => VideoUpload[];
+  onVideos: (id: string, updater: (prev: VideoUpload[]) => VideoUpload[]) => void;
 }) {
   const value = answers[question.id];
 
@@ -112,6 +117,8 @@ export function QuestionScreen({
             onChange={(v) => onChange(question.id, v)}
             files={uploadFilesFor(question.id)}
             onFilesChange={(f) => onUploadFiles(question.id, f)}
+            videos={videosFor(question.id)}
+            onVideosChange={(u) => onVideos(question.id, u)}
           />
         )}
         {question.type === "lookup" && (
