@@ -3,6 +3,8 @@ import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
 import { aiConfigured } from "@/lib/ai/openai";
 import { buildCaseConfirmation } from "@/lib/email/caseConfirmation";
 import { emailConfigured, sendEmail } from "@/lib/email/resend";
+import { buildCaseHandover } from "@/lib/email/caseHandover";
+import { alertSlack } from "@/lib/alerts/slack";
 import { corsPreflight, withCors } from "@/lib/cors";
 import { verifyTurnstile } from "@/lib/security/turnstile";
 import type { Diagnosis } from "@/lib/diagnoses/types";
@@ -255,7 +257,18 @@ export async function POST(request: Request) {
       cache: "no-store",
     });
   } catch (e) {
-    console.error("[support] network error:", e instanceof Error ? e.message : e);
+    const why = e instanceof Error ? e.message : String(e);
+    console.error("[support] network error:", why);
+    if (await handover(body, images, `Couldn't reach Stopgap — ${why}`)) {
+      return withCors(
+        NextResponse.json({
+          ok: true,
+          handedOver: true,
+          attachedImages: images.length,
+        }),
+        request,
+      );
+    }
     return fail("Couldn't reach the support system. Please try again.", 502);
   }
 
@@ -308,10 +321,78 @@ export async function POST(request: Request) {
     return fail(msg || "The support system rejected the request.", 400);
   }
 
-  // 401 (our key), 403 (origin), 500, anything else → log detail, generic to user.
+  // 401 (our key), 403 (origin), 500, anything else → log detail, then try to
+  // rescue the case rather than lose it.
   const detail = (await res.text().catch(() => "")).slice(0, 300);
   console.error(`[support] upstream ${res.status}: ${detail}`);
+
+  const rescued = await handover(
+    body,
+    images,
+    `Stopgap answered ${res.status}${detail ? ` — ${detail}` : ""}`,
+  );
+  if (rescued) {
+    return withCors(
+      NextResponse.json({
+        ok: true,
+        handedOver: true,
+        attachedImages: images.length,
+      }),
+      request,
+    );
+  }
   return fail("Couldn't submit the case. Please try again.", 502);
+}
+
+/**
+ * Last resort when Stopgap won't take a case: email it to the team instead.
+ *
+ * Returns true only if the email actually went, because that is the whole
+ * question — if it did, a person has the case and telling the customer it was
+ * received is true. If it didn't, nothing has the case and they must see the
+ * error, however unhelpful, rather than be told a comforting lie.
+ */
+async function handover(
+  body: SupportCaseRequest,
+  images: SupportImage[],
+  reason: string,
+): Promise<boolean> {
+  const to = process.env.SUPPORT_FALLBACK_EMAIL?.trim() ||
+    process.env.EMAIL_REPLY_TO?.trim();
+  if (!emailConfigured() || !to) {
+    console.error("[support] no handover inbox configured — case lost");
+    return false;
+  }
+
+  const mail = buildCaseHandover({
+    name: body.name,
+    email: body.email,
+    phone: body.phone,
+    subject: body.subject,
+    model: body.model,
+    orderNumber: body.orderNumber,
+    summary: body.troubleshootingSummary,
+    message: body.message,
+    reason,
+    images: images.map((i, n) => ({
+      filename: i.fileName || `photo-${n + 1}.jpg`,
+      content: i.base64,
+    })),
+  });
+
+  const id = await sendEmail({ to, ...mail });
+  if (!id) {
+    console.error("[support] handover email failed — case lost");
+    return false;
+  }
+
+  console.error(`[support] handed over by email (${reason})`);
+  await alertSlack(
+    `:rotating_light: Troubleshooting guide can't file cases — ${reason}. ` +
+      `Case from ${body.name} <${body.email}> was emailed to ${to} instead. ` +
+      `Customers are still being served, but every case needs handling by hand until this is fixed.`,
+  );
+  return true;
 }
 
 // Health probe — whether the support key is wired (no data, no upstream call).

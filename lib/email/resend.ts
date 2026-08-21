@@ -9,11 +9,20 @@ export function emailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
 
+export interface EmailAttachment {
+  filename: string;
+  /** Base64-encoded file content. */
+  content: string;
+}
+
 export interface SendEmailInput {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
+  /** Overrides EMAIL_REPLY_TO — used to point a handover straight at the customer. */
+  replyTo?: string;
 }
 
 /**
@@ -28,7 +37,7 @@ export async function sendEmail(input: SendEmailInput): Promise<string | null> {
 
   // Replies to a no-reply address vanish, and on a support email some people
   // will reply anyway. Point them at a monitored inbox.
-  const replyTo = process.env.EMAIL_REPLY_TO?.trim();
+  const replyTo = input.replyTo?.trim() || process.env.EMAIL_REPLY_TO?.trim();
 
   try {
     const res = await fetch(ENDPOINT, {
@@ -44,6 +53,9 @@ export async function sendEmail(input: SendEmailInput): Promise<string | null> {
         text: input.text,
         html: input.html,
         ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(input.attachments?.length
+          ? { attachments: input.attachments }
+          : {}),
       }),
       cache: "no-store",
     });

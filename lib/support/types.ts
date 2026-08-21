@@ -31,4 +31,8 @@ export interface SupportApiSuccess {
 /** What our own /api/support route returns to the browser. */
 export type SupportResult =
   | { ok: true; caseId: number; attachedImages: number }
+  // Stopgap refused it and the case was emailed to the team instead. There is
+  // no case number to show, but a person has it, so the customer is told the
+  // same thing either way.
+  | { ok: true; caseId?: undefined; attachedImages: number; handedOver: true }
   | { ok: false; error: string };

@@ -420,7 +420,10 @@ export function Troubleshooter({
       }))) as SupportResult;
 
       if (json.ok) {
-        setTicket({ caseId: json.caseId, attachedImages: json.attachedImages });
+        setTicket({
+          caseId: json.caseId ?? null,
+          attachedImages: json.attachedImages ?? 0,
+        });
         setPhase("sent");
         // Persist the run for analytics. The customer flow no longer asks for a
         // rating, so this is the only record of it — best-effort, and never

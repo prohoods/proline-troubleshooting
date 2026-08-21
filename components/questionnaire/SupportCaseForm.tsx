@@ -72,7 +72,8 @@ export function SupportCaseForm({
       : null;
   });
   const [result, setResult] = useState<{
-    caseId: number;
+    /** Null when Stopgap refused and the case was emailed to the team instead. */
+    caseId: number | null;
     attachedImages: number;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +140,10 @@ export function SupportCaseForm({
         .json()
         .catch(() => ({ ok: false, error: "Unexpected response." }))) as SupportResult;
       if (json.ok) {
-        setResult({ caseId: json.caseId, attachedImages: json.attachedImages });
+        setResult({
+          caseId: json.caseId ?? null,
+          attachedImages: json.attachedImages,
+        });
       } else {
         setError(json.error || "Couldn't submit the case. Please try again.");
       }
@@ -158,9 +162,11 @@ export function SupportCaseForm({
             <Icon name="check" className="h-4 w-4" strokeWidth={3} />
           </span>
           <h3 className="text-lg font-bold text-ink">
-            {isCustomer
-              ? `We're on it — case #${result.caseId} is open.`
-              : `Support case #${result.caseId} created.`}
+            {result.caseId === null
+              ? "We're on it — your request is with our team."
+              : isCustomer
+                ? `We're on it — case #${result.caseId} is open.`
+                : `Support case #${result.caseId} created.`}
           </h3>
         </div>
         <p className="mt-2 text-sm text-muted">
