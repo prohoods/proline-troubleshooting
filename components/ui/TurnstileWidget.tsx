@@ -35,6 +35,8 @@ declare global {
         },
       ) => string | undefined;
       remove: (id: string) => void;
+      /** Re-runs the challenge and issues a new pass through `callback`. */
+      reset: (id?: string) => void;
     };
   }
 }
@@ -78,16 +80,38 @@ export function turnstileEnabled(): boolean {
 
 export function TurnstileWidget({
   onToken,
+  resetSignal = 0,
 }: {
   onToken: (token: string | null) => void;
+  /**
+   * Bump to throw away the current pass and get a new one.
+   *
+   * A pass is single-use, and the server rejecting one it has already seen
+   * looks identical here to a pass that still works — Cloudflare only tells
+   * the widget about expiry, not about use. Without this, a rejected send
+   * leaves a dead pass in hand and every retry fails the same way, which is
+   * the "please reload the page" dead end customers were hitting.
+   */
+  resetSignal?: number;
 }) {
   const marker = useRef<HTMLSpanElement>(null);
+  const refreshRef = useRef<() => void>(() => {});
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
   useEffect(() => {
     if (!siteKey || !marker.current) return;
     let widgetId: string | undefined;
     let cancelled = false;
+
+    const refresh = () => {
+      if (cancelled || widgetId === undefined || !window.turnstile) return;
+      try {
+        window.turnstile.reset(widgetId);
+      } catch {
+        // Nothing useful to do — the send button stays disabled and the
+        // customer can reload, which is what the copy already tells them.
+      }
+    };
 
     // Match the widget's own content column and centre it, so an interactive
     // challenge lands directly under the form rather than adrift at the edge of
@@ -109,10 +133,19 @@ export function TurnstileWidget({
         widgetId = window.turnstile.render(container, {
           sitekey: siteKey,
           callback: (token) => onToken(token),
-          // A failed or expired challenge clears the token so a stale one is
-          // never submitted.
-          "error-callback": () => onToken(null),
-          "expired-callback": () => onToken(null),
+          // Cloudflare's passes last five minutes and are single-use. Clearing
+          // the token isn't enough on its own: the customer is then held on
+          // "Checking…" forever with nothing left to wait for. Ask for a fresh
+          // one immediately — the challenge is invisible unless it needs a
+          // click, so this costs them nothing.
+          "error-callback": () => {
+            onToken(null);
+            refresh();
+          },
+          "expired-callback": () => {
+            onToken(null);
+            refresh();
+          },
           appearance: "interaction-only",
           theme: "light",
         });
@@ -123,8 +156,11 @@ export function TurnstileWidget({
         onToken(null);
       });
 
+    refreshRef.current = refresh;
+
     return () => {
       cancelled = true;
+      refreshRef.current = () => {};
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
       container.remove();
     };
@@ -132,6 +168,13 @@ export function TurnstileWidget({
     // the widget and throw away a good token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey]);
+
+  // Skips the first render: the freshly-rendered widget already has a pass.
+  const firstSignal = useRef(resetSignal);
+  useEffect(() => {
+    if (resetSignal === firstSignal.current) return;
+    refreshRef.current();
+  }, [resetSignal]);
 
   // Only a positioning marker — the widget itself lives outside the shadow root.
   if (!siteKey) return null;

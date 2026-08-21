@@ -28,6 +28,7 @@ export function ContactStep({
   onToken,
   tokenReady,
   videoProgress,
+  botResetSignal,
 }: {
   value: Contact | null;
   onChange: (c: Contact) => void;
@@ -43,6 +44,8 @@ export function ContactStep({
   tokenReady: boolean;
   /** 0-100 while a video is still uploading; null when nothing is pending. */
   videoProgress: number | null;
+  /** Bumped after a failed send, to replace the pass that was just spent. */
+  botResetSignal: number;
 }) {
   const [touched, setTouched] = useState(false);
   const c = value ?? { name: "", email: "", phone: "" };
@@ -86,7 +89,7 @@ export function ContactStep({
         .
       </p>
 
-      <TurnstileWidget onToken={onToken} />
+      <TurnstileWidget onToken={onToken} resetSignal={botResetSignal} />
 
       {touched && !detailsOk && (
         <p className="mt-3 text-sm text-danger">

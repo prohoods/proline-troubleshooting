@@ -109,6 +109,9 @@ export function Troubleshooter({
   // Turnstile proof-of-humanity, attached to the submission. Null until the
   // challenge resolves, or when Turnstile isn't configured at all.
   const [botToken, setBotToken] = useState<string | null>(null);
+  // Bumped whenever a send fails, so the bot check hands over a fresh pass
+  // instead of the spent one that just got rejected.
+  const [botResetSignal, setBotResetSignal] = useState(0);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -348,6 +351,16 @@ export function Troubleshooter({
    * server-side from `runContext`) the AI pre-diagnosis. The customer sees only
    * the confirmation.
    */
+  /**
+   * A pass is spent the moment the server checks it, whether or not the send
+   * worked. Holding on to it means every retry is rejected for the same reason
+   * and the customer is told to reload — so drop it and fetch another.
+   */
+  const retryWithFreshPass = () => {
+    setBotToken(null);
+    setBotResetSignal((n) => n + 1);
+  };
+
   const sendTicket = async (c: Contact) => {
     if (!flow || !category || sending || ticket) return;
     setSending(true);
@@ -434,10 +447,12 @@ export function Troubleshooter({
           json.error || "We couldn't send your request. Please try again.",
         );
         setPhase("contact");
+        retryWithFreshPass();
       }
     } catch {
       setSendError("We couldn't send your request. Please try again.");
       setPhase("contact");
+      retryWithFreshPass();
     } finally {
       setSending(false);
     }
@@ -577,6 +592,7 @@ export function Troubleshooter({
           onToken={setBotToken}
           tokenReady={!turnstileEnabled() || botToken !== null}
           videoProgress={videoProgress}
+          botResetSignal={botResetSignal}
         />
       </Panel>
     );
