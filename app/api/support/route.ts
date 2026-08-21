@@ -387,6 +387,17 @@ async function handover(
   }
 
   console.error(`[support] handed over by email (${reason})`);
+
+  // The customer is told their request was received, so they get the same
+  // acknowledgement they would have had — minus a case number, because there
+  // isn't one. Best-effort: the case is already safely with the team.
+  const ack = buildCaseConfirmation({
+    name: body.name,
+    caseId: null,
+    model: body.model,
+    attachedImages: images.length,
+  });
+  await sendEmail({ to: body.email, ...ack });
   await alertSlack(
     `:rotating_light: Troubleshooting guide can't file cases — ${reason}. ` +
       `Case from ${body.name} <${body.email}> was emailed to ${to} instead. ` +

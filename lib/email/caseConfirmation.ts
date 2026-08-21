@@ -12,7 +12,8 @@ import { findSpec } from "@/lib/knowledge/specSheets";
  */
 export interface CaseConfirmationInput {
   name: string;
-  caseId: number;
+  /** Null when Stopgap refused and the case was handed to the team by email. */
+  caseId: number | null;
   /** Model as submitted, used to look up the install guide and spec sheet. */
   model?: string;
   attachedImages: number;
@@ -35,7 +36,9 @@ export function buildCaseConfirmation(input: CaseConfirmationInput): {
 } {
   const spec = input.model ? findSpec([input.model]) : null;
   const firstName = input.name.trim().split(/\s+/)[0] || "there";
-  const subject = `We've got your request — case #${input.caseId}`;
+  const subject = input.caseId
+    ? `We've got your request — case #${input.caseId}`
+    : "We've got your request";
 
   const photoLine =
     input.attachedImages > 0
@@ -50,7 +53,9 @@ export function buildCaseConfirmation(input: CaseConfirmationInput): {
   const text = [
     `Hi ${firstName},`,
     "",
-    `Thanks for reaching out. Your request is with our support team as case #${input.caseId}.`,
+    input.caseId
+      ? `Thanks for reaching out. Your request is with our support team as case #${input.caseId}.`
+      : "Thanks for reaching out. Your request is with our support team.",
     "",
     `${photoLine} A Proline specialist will review everything and email you within one to two business days — you won't need to repeat any of it.`,
     "",
@@ -72,7 +77,7 @@ export function buildCaseConfirmation(input: CaseConfirmationInput): {
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #dae2e9;border-radius:16px;padding:28px;">
     <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#28a5de;">Request received</p>
     <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;">Thanks, ${esc(firstName)} — we've got it.</h1>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Your request is with our support team as <strong>case #${input.caseId}</strong>.</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Your request is with our support team${input.caseId ? ` as <strong>case #${input.caseId}</strong>` : ""}.</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">${esc(photoLine)} A Proline specialist will review everything and email you <strong>within one to two business days</strong> — you won't need to repeat any of it.</p>
     ${
       docs.length

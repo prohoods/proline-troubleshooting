@@ -13,12 +13,17 @@ export const blobConfigured = (): boolean =>
   Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 /**
- * Upload a run's PDF to Vercel Blob and return its URL. A random suffix keeps
- * the URL unguessable (the PDF contains customer details).
+ * Upload a run's PDF to Vercel Blob and return its URL.
+ *
+ * Private, because the store is: it holds customer names, emails and order
+ * details. This asked for public access for months without anyone noticing,
+ * because the storage check was wrong and the upload never ran at all — the
+ * moment that was fixed, every PDF started failing on "cannot use public
+ * access on a private store".
  */
 export async function uploadRunPdf(id: string, pdf: Buffer): Promise<string> {
   const { url } = await put(`runs/${id}.pdf`, pdf, {
-    access: "public",
+    access: "private",
     contentType: "application/pdf",
     addRandomSuffix: true,
   });
