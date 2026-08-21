@@ -32,6 +32,13 @@ interface RunRow {
   hidden: boolean;
 }
 
+interface KeyCheck {
+  keyAccepted?: boolean;
+  key?: string;
+  keyHasNoStrayWhitespace?: boolean;
+  verdict: string;
+}
+
 const STORAGE_KEY = "proline-admin-token";
 const LABELS: Record<string, string> = {
   range_hood: "Range Hoods",
@@ -51,6 +58,8 @@ export default function StatsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [check, setCheck] = useState<KeyCheck | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -128,6 +137,24 @@ export default function StatsPage() {
     }
   };
 
+  /** Asks Stopgap whether it still accepts our key. Creates no case. */
+  const checkSupport = async () => {
+    const t = tokenRef.current?.value ?? "";
+    if (!t.trim() || checking) return;
+    setChecking(true);
+    setCheck(null);
+    try {
+      const res = await fetch(apiUrl("/api/admin/support-check"), {
+        headers: { "x-admin-token": t.trim() },
+      });
+      setCheck((await res.json()) as KeyCheck);
+    } catch {
+      setCheck({ verdict: "Couldn't run the check — try again in a moment." });
+    } finally {
+      setChecking(false);
+    }
+  };
+
   const hiddenCount = runs?.filter((r) => r.hidden).length ?? 0;
 
   const busiest = stats?.byDay.reduce((a, b) => (b.runs > a.runs ? b : a), {
@@ -184,6 +211,36 @@ export default function StatsPage() {
         </div>
 
         {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+
+        <div className="mt-6 rounded-2xl border border-line bg-mist p-5">
+          <p className="font-semibold text-ink">Can we still file cases?</p>
+          <p className="mt-1 max-w-xl text-sm text-muted">
+            Checks whether Stopgap still accepts our API key. Creates no case,
+            so it&apos;s safe to run any time.
+          </p>
+          <div className="mt-3">
+            <Button onClick={() => void checkSupport()} disabled={checking}>
+              {checking ? "Checking…" : "Check connection"}
+            </Button>
+          </div>
+          {check && (
+            <p
+              className={`mt-3 text-sm font-medium ${
+                check.keyAccepted ? "text-ink" : "text-danger"
+              }`}
+            >
+              {check.keyAccepted ? "✓ " : "✕ "}
+              {check.verdict}
+              {check.key && (
+                <span className="block font-normal text-muted">
+                  Key in use: {check.key}
+                  {check.keyHasNoStrayWhitespace === false &&
+                    " — WARNING: it has a stray space or line break, which will make it fail."}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
 
         {stats && (
           <>
