@@ -90,13 +90,22 @@ export function GET() {
   // here can reach the layout — whether they land depends on which names the
   // theme's <title>/<meta> markup reads. The JS fallback below is
   // unconditional, so the title is correct either way.
+  // Whether the bot check is enforced is a server-side fact — it needs the
+  // secret, which the browser never sees. Passing it down with the page saves
+  // the flow a round trip to find out, and that round trip failing is exactly
+  // what left customers watching "Checking…" for fifteen seconds.
+  const botCheck =
+    process.env.TURNSTILE_SECRET_KEY && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      ? "on"
+      : "off";
+
   const body = `{% assign page_title = '${TITLE}' %}
 {% assign page_description = '${DESCRIPTION}' %}
 {% assign meta_description = '${DESCRIPTION}' %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${FONT_HREF}">
-<div id="proline-troubleshooter" style="display:block !important;visibility:visible !important;width:auto !important;height:auto !important;max-height:none !important;opacity:1 !important"></div>
+<div id="proline-troubleshooter" data-bot-check="${botCheck}" style="display:block !important;visibility:visible !important;width:auto !important;height:auto !important;max-height:none !important;opacity:1 !important"></div>
 <script type="application/ld+json">${JSON.stringify(FAQ_SCHEMA)}</script>
 <script>
 (function(){

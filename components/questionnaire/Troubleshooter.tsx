@@ -61,6 +61,7 @@ export function Troubleshooter({
   mode = "agent",
   skipWelcome = false,
   initialCategory = null,
+  botCheck,
 }: {
   mode?: AppMode;
   /**
@@ -74,6 +75,14 @@ export function Troubleshooter({
    * page that is already about one product, the picker is a dead click.
    */
   initialCategory?: Category | null;
+  /**
+   * Whether the server enforces the bot check, when the page already knows.
+   *
+   * Undefined means ask. Being told saves a round trip — and a failed round
+   * trip used to leave the send button on "Checking…" until the give-up timer
+   * fired, which is a long time to stare at a disabled button.
+   */
+  botCheck?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>(
     initialCategory ? "questions" : skipWelcome ? "category" : "welcome",
@@ -126,10 +135,10 @@ export function Troubleshooter({
    * going to look at. Assume it's enforced until told otherwise, so a slow or
    * failed answer here never weakens anything.
    */
-  const [botRequired, setBotRequired] = useState(true);
+  const [botRequired, setBotRequired] = useState(botCheck ?? true);
 
   useEffect(() => {
-    if (!turnstileEnabled()) return;
+    if (!turnstileEnabled() || botCheck !== undefined) return;
     let cancelled = false;
     void fetch(apiUrl("/api/support"))
       .then((r) => (r.ok ? r.json() : null))
@@ -142,7 +151,7 @@ export function Troubleshooter({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [botCheck]);
 
   const flow = category?.flow;
   const steps = useMemo(

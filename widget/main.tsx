@@ -79,10 +79,19 @@ function mount() {
   //
   //   data-skip-welcome="true"   — the page supplies its own intro and <h1>
   //   data-category="range_hood" — open on the first real question
+  //   data-bot-check="off"       — the server isn't checking passes, so the
+  //                                flow shouldn't wait for one
   //
   // Defaults reproduce the standalone behaviour (welcome → picker → questions).
   const skipWelcome = host.dataset.skipWelcome === "true";
   const categoryId = host.dataset.category?.trim();
+  // Undefined when the page didn't say, in which case the flow asks the server.
+  const botCheck =
+    host.dataset.botCheck === "off"
+      ? false
+      : host.dataset.botCheck === "on"
+        ? true
+        : undefined;
   const initialCategory = categoryId
     ? (categories.find((c) => c.id === categoryId && c.available) ?? null)
     : null;
@@ -102,6 +111,7 @@ function mount() {
         mode="customer"
         skipWelcome={skipWelcome}
         initialCategory={initialCategory}
+        botCheck={botCheck}
       />
     </StrictMode>,
   );

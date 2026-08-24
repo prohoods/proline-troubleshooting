@@ -468,9 +468,18 @@ async function handover(
 // the server can see, while the widget only knows about the site key. Leave
 // the site key set after removing the secret and the customer waits for a pass
 // nobody will ever check — which is exactly what happened.
-export function GET() {
-  return NextResponse.json({
-    configured: Boolean(process.env.PROLINE_SUPPORT_API_KEY),
-    botCheck: turnstileConfigured(),
-  });
+export function GET(request: Request) {
+  // CORS matters here as much as on the POST. The flow is served from the
+  // storefront and this app answers from its own origin, so without the header
+  // the browser refuses to read the reply — the call looks like a failure, the
+  // flow assumes the bot check is still enforced, and the customer waits out
+  // the give-up timer before the send button appears. That was a 20-second
+  // wait on Safari for a question that had already been answered.
+  return withCors(
+    NextResponse.json({
+      configured: Boolean(process.env.PROLINE_SUPPORT_API_KEY),
+      botCheck: turnstileConfigured(),
+    }),
+    request,
+  );
 }

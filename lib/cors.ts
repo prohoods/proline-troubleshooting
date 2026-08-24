@@ -46,7 +46,7 @@ export function corsPreflight(request: Request): NextResponse {
 
   const response = new NextResponse(null, { status: 204 });
   response.headers.set("Access-Control-Allow-Origin", origin);
-  response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type");
   response.headers.set("Access-Control-Max-Age", "86400");
   response.headers.set("Vary", "Origin");
