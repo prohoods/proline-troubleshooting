@@ -130,7 +130,17 @@ async function aiSectionFor(raw: string): Promise<string> {
     const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
     try {
       const result = await diagnoseWithBrain(ctx, controller.signal);
-      if (result) return formatBrainSection(result);
+      if (result) {
+        // Logged on the way through, because the alternative is proving a
+        // negative: without this, "Proline AI worked" and "Proline AI was
+        // never called" look identical in the logs.
+        console.log(
+          `[support] Proline AI diagnosis used — ${result.causes.length} cause(s), ` +
+            `${result.consulted?.length ?? 0} Brain note(s): ` +
+            `${(result.consulted ?? []).slice(0, 5).join("; ") || "none cited"}`,
+        );
+        return formatBrainSection(result);
+      }
       console.error("[support] Proline AI returned no causes — falling back");
     } catch (e) {
       console.error(
