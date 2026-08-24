@@ -78,9 +78,17 @@ const failFor = (request: Request) => (error: string, status: number) =>
  * They are sitting on the last screen watching a spinner for something they
  * will never see — it's written for the agent. Proline AI searches the vault
  * and routinely takes longer than this; when it does, the case is filed
- * immediately and the analysis follows by email (see finishDiagnosisAfter).
+ * immediately and the analysis follows by email.
+ *
+ * Zero by default, i.e. don't wait at all. Proline AI searches the vault and
+ * takes far longer than anyone should be held on a confirmation screen, so an
+ * inline attempt was three seconds spent losing a race. The analysis is
+ * finished afterwards and emailed against the case number instead.
+ *
+ * Raise INLINE_AI_MS if it becomes fast enough to be worth catching — the
+ * result then goes into the case body as it originally did.
  */
-const INLINE_AI_MS = 8_000;
+const INLINE_AI_MS = Number(process.env.INLINE_AI_MS ?? 0);
 
 /** The ceiling once nobody is waiting — bounded by this route's maxDuration. */
 const BACKGROUND_AI_MS = 45_000;
@@ -205,6 +213,14 @@ export function OPTIONS(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Where the customer's wait actually goes. Added after a report of a
+  // 25-second submit that couldn't be attributed to anything: the guesses were
+  // the AI, the bot check, Stopgap and the email, and no way to tell them apart.
+  const t0 = Date.now();
+  const marks: string[] = [];
+  const mark = (label: string, since: number) =>
+    marks.push(`${label}=${Date.now() - since}ms`);
+
   const fail = failFor(request);
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -252,6 +268,9 @@ export async function POST(request: Request) {
   }
 
   // ---- Photos: enforce limits, base64-encode server-side --------------------
+  mark("botcheck", t0);
+  const tImages = Date.now();
+
   const files = form
     .getAll("images")
     .filter((f): f is File => f instanceof File);
@@ -266,13 +285,17 @@ export async function POST(request: Request) {
   }
 
   // ---- Customer runs: attach the agent-facing AI pre-diagnosis --------------
+  mark("images", tImages);
+  const tAi = Date.now();
+
   const runContext = str("runContext");
   let summary = str("troubleshootingSummary");
   // Set when the pre-diagnosis didn't make the customer's time budget, so it
   // can be finished and emailed once they're off the hook.
   let pendingDiagnosis = "";
   if (runContext) {
-    const aiSection = await aiSectionFor(runContext, INLINE_AI_MS);
+    const aiSection =
+      INLINE_AI_MS > 0 ? await aiSectionFor(runContext, INLINE_AI_MS) : "";
     if (aiSection) summary = `${summary}\n${aiSection}`.trim();
     else pendingDiagnosis = runContext;
   }
@@ -325,6 +348,9 @@ export async function POST(request: Request) {
     );
   }
 
+  mark("diagnosis", tAi);
+  const tStopgap = Date.now();
+
   // ---- Forward to the Proline support API with the key ----------------------
   let res: Response;
   try {
@@ -349,6 +375,8 @@ export async function POST(request: Request) {
     }
     return fail("Couldn't reach the support system. Please try again.", 502);
   }
+
+  mark("stopgap", tStopgap);
 
   if (res.status === 200) {
     const data = (await res
@@ -397,10 +425,10 @@ export async function POST(request: Request) {
         }
       }
 
-      // Acknowledgement to the customer. Best-effort, and awaited only so the
-      // serverless function isn't torn down mid-flight: the case already
-      // exists and the customer has already been told it worked, so an email
-      // failure must never become an error they see.
+      // Acknowledgement to the customer. This used to be awaited purely to stop
+      // the serverless function being torn down mid-send, which meant the
+      // customer sat waiting on their own receipt. after() is the right tool:
+      // it runs once the response has gone out, without the teardown risk.
       if (emailConfigured()) {
         const mail = buildCaseConfirmation({
           name: body.name,
@@ -408,13 +436,27 @@ export async function POST(request: Request) {
           model: body.model,
           attachedImages: data.AttachedImages ?? images.length,
         });
-        const id = await sendEmail({ to: body.email, ...mail });
-        if (!id) {
-          console.error(
-            `[support] confirmation email failed for case ${data.CaseId}`,
-          );
+        const to = body.email;
+        const caseId = data.CaseId;
+        try {
+          after(async () => {
+            const id = await sendEmail({ to, ...mail });
+            if (!id) {
+              console.error(
+                `[support] confirmation email failed for case ${caseId}`,
+              );
+            }
+          });
+        } catch {
+          // No request scope to schedule in — send it inline rather than
+          // silently skip the customer's receipt.
+          await sendEmail({ to, ...mail });
         }
       }
+
+      console.log(
+        `[support] case #${data.CaseId} filed in ${Date.now() - t0}ms (${marks.join(" ")})`,
+      );
 
       // Correlates the logged request above with the case it created.
       if (debugLog) {
