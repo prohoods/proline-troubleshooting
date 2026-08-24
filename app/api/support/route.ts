@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
+import {
+  brainConfigured,
+  diagnoseWithBrain,
+  formatBrainSection,
+} from "@/lib/ai/prolineBrain";
 import { aiConfigured } from "@/lib/ai/openai";
 import { buildCaseConfirmation } from "@/lib/email/caseConfirmation";
 import { emailConfigured, sendEmail } from "@/lib/email/resend";
@@ -105,10 +110,39 @@ function formatAiSection(diagnoses: Diagnosis[]): string {
   return L.join("\n");
 }
 
+/**
+ * The pre-diagnosis that rides along in the ticket, for the agent only.
+ *
+ * Proline AI first: it searches the live Brain, so it knows everything the
+ * team knows today. The local model is the fallback — faster, but working from
+ * a summary of the vault frozen in July.
+ *
+ * Both are wrapped in the same time budget and both may return nothing. The
+ * case is what matters; a missing pre-diagnosis costs an agent a few minutes,
+ * a delayed case costs the customer their submission.
+ */
 async function aiSectionFor(raw: string): Promise<string> {
-  if (!aiConfigured()) return "";
   const ctx = parseRunContext(raw);
   if (!ctx) return "";
+
+  if (brainConfigured()) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+    try {
+      const result = await diagnoseWithBrain(ctx, controller.signal);
+      if (result) return formatBrainSection(result);
+      console.error("[support] Proline AI returned no causes — falling back");
+    } catch (e) {
+      console.error(
+        "[support] Proline AI unavailable, falling back:",
+        e instanceof Error ? e.message : e,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  if (!aiConfigured()) return "";
   try {
     const diagnoses = await Promise.race([
       generateDiagnosis(ctx),
