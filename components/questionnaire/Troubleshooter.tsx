@@ -112,6 +112,10 @@ export function Troubleshooter({
   // Bumped whenever a send fails, so the bot check hands over a fresh pass
   // instead of the spent one that just got rejected.
   const [botResetSignal, setBotResetSignal] = useState(0);
+  // The bot check never produced a pass. Blocking forever is the worst
+  // outcome, so let them send: the server still decides, and a rejection at
+  // least tells them something.
+  const [botGaveUp, setBotGaveUp] = useState(false);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -590,7 +594,8 @@ export function Troubleshooter({
             effectiveContact?.name.trim() && effectiveContact?.email.trim(),
           )}
           onToken={setBotToken}
-          tokenReady={!turnstileEnabled() || botToken !== null}
+          tokenReady={!turnstileEnabled() || botToken !== null || botGaveUp}
+          onBotUnavailable={() => setBotGaveUp(true)}
           videoProgress={videoProgress}
           botResetSignal={botResetSignal}
         />

@@ -41,6 +41,13 @@ declare global {
   }
 }
 
+/**
+ * How long to wait for a pass before treating the check as broken. Generous:
+ * a real challenge resolves in a second or two, and a slow connection should
+ * not be mistaken for a failure.
+ */
+const UNAVAILABLE_AFTER_MS = 15_000;
+
 const SCRIPT_SRC =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const SCRIPT_ID = "cf-turnstile-script";
@@ -81,6 +88,7 @@ export function turnstileEnabled(): boolean {
 export function TurnstileWidget({
   onToken,
   resetSignal = 0,
+  onUnavailable,
 }: {
   onToken: (token: string | null) => void;
   /**
@@ -93,9 +101,23 @@ export function TurnstileWidget({
    * the "please reload the page" dead end customers were hitting.
    */
   resetSignal?: number;
+  /**
+   * Called when the challenge hasn't produced a pass in a reasonable time.
+   *
+   * Cloudflare's challenge silently never completes for some people — Safari
+   * with cross-site tracking prevention is the case we've seen — and the send
+   * button then waits for something that is never coming. An eternal
+   * "Checking…" is the worst possible outcome: the customer has answered every
+   * question and has no idea why they can't send it.
+   */
+  onUnavailable?: () => void;
 }) {
   const marker = useRef<HTMLSpanElement>(null);
   const refreshRef = useRef<() => void>(() => {});
+  const onUnavailableRef = useRef(onUnavailable);
+  useEffect(() => {
+    onUnavailableRef.current = onUnavailable;
+  }, [onUnavailable]);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
   useEffect(() => {
@@ -151,14 +173,22 @@ export function TurnstileWidget({
         });
       })
       .catch(() => {
-        // Script blocked (extension, network). The server decides what happens
-        // with a missing token; no dead end is shown here.
+        // Script blocked by an extension, a content blocker, or the network.
+        // No amount of waiting fixes this one, so say so immediately.
         onToken(null);
+        onUnavailableRef.current?.();
       });
 
     refreshRef.current = refresh;
 
+    // Nothing after this point can rescue a challenge that never ran, so give
+    // up and tell the parent rather than leaving the customer waiting.
+    const giveUp = setTimeout(() => {
+      if (!cancelled) onUnavailableRef.current?.();
+    }, UNAVAILABLE_AFTER_MS);
+
     return () => {
+      clearTimeout(giveUp);
       cancelled = true;
       refreshRef.current = () => {};
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId);

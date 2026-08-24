@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { type DiagnoseContext, generateDiagnosis } from "@/lib/ai/diagnose";
 import {
   brainConfigured,
@@ -69,7 +69,18 @@ const failFor = (request: Request) => (error: string, status: number) =>
 // ---- AI pre-diagnosis (agent-facing, best-effort) ---------------------------
 // Never blocks the ticket: any parse/AI/timeout failure just means the case is
 // submitted without the AI section.
-const AI_TIMEOUT_MS = 25_000;
+/**
+ * How long the CUSTOMER waits for a pre-diagnosis before we file without one.
+ *
+ * They are sitting on the last screen watching a spinner for something they
+ * will never see — it's written for the agent. Proline AI searches the vault
+ * and routinely takes longer than this; when it does, the case is filed
+ * immediately and the analysis follows by email (see finishDiagnosisAfter).
+ */
+const INLINE_AI_MS = 8_000;
+
+/** The ceiling once nobody is waiting — bounded by this route's maxDuration. */
+const BACKGROUND_AI_MS = 45_000;
 
 function parseRunContext(raw: string): DiagnoseContext | null {
   try {
@@ -121,13 +132,24 @@ function formatAiSection(diagnoses: Diagnosis[]): string {
  * case is what matters; a missing pre-diagnosis costs an agent a few minutes,
  * a delayed case costs the customer their submission.
  */
-async function aiSectionFor(raw: string): Promise<string> {
+async function aiSectionFor(
+  raw: string,
+  budgetMs: number,
+): Promise<string> {
   const ctx = parseRunContext(raw);
   if (!ctx) return "";
 
+  // One deadline for both engines, not one each. Giving the fallback its own
+  // budget doubles the wait in exactly the case where the customer is already
+  // waiting too long — which is what happened the first time this shipped.
+  const deadline = Date.now() + budgetMs;
+  const remaining = () => deadline - Date.now();
+  // Below this there isn't time for a round trip; don't spend it finding out.
+  const TOO_LATE_MS = 1_500;
+
   if (brainConfigured()) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), remaining());
     try {
       const result = await diagnoseWithBrain(ctx, controller.signal);
       if (result) {
@@ -153,11 +175,16 @@ async function aiSectionFor(raw: string): Promise<string> {
   }
 
   if (!aiConfigured()) return "";
+  if (remaining() < TOO_LATE_MS) {
+    console.error("[support] no time left for the fallback diagnosis");
+    return "";
+  }
   try {
+    const left = remaining();
     const diagnoses = await Promise.race([
       generateDiagnosis(ctx),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("ai_timeout")), AI_TIMEOUT_MS),
+        setTimeout(() => reject(new Error("ai_timeout")), left),
       ),
     ]);
     return diagnoses.length ? formatAiSection(diagnoses) : "";
@@ -238,9 +265,13 @@ export async function POST(request: Request) {
   // ---- Customer runs: attach the agent-facing AI pre-diagnosis --------------
   const runContext = str("runContext");
   let summary = str("troubleshootingSummary");
+  // Set when the pre-diagnosis didn't make the customer's time budget, so it
+  // can be finished and emailed once they're off the hook.
+  let pendingDiagnosis = "";
   if (runContext) {
-    const aiSection = await aiSectionFor(runContext);
+    const aiSection = await aiSectionFor(runContext, INLINE_AI_MS);
     if (aiSection) summary = `${summary}\n${aiSection}`.trim();
+    else pendingDiagnosis = runContext;
   }
 
   const body: SupportCaseRequest = {
@@ -321,6 +352,48 @@ export async function POST(request: Request) {
       .json()
       .catch(() => null)) as SupportApiSuccess | null;
     if (data?.Success && typeof data.CaseId === "number") {
+      // The analysis outran the customer's patience, so finish it now that
+      // they've been sent on their way and email it to whoever picks the case
+      // up. after() runs once the response has gone out.
+      if (pendingDiagnosis) {
+        const caseId = data.CaseId;
+        const who = body.name;
+        const finish = async () => {
+          const section = await aiSectionFor(pendingDiagnosis, BACKGROUND_AI_MS);
+          if (!section) {
+            console.error(`[support] no pre-diagnosis for case #${caseId}`);
+            return;
+          }
+          const to =
+            process.env.SUPPORT_FALLBACK_EMAIL?.trim() ||
+            process.env.EMAIL_REPLY_TO?.trim();
+          if (!emailConfigured() || !to) return;
+          const sent = await sendEmail({
+            to,
+            subject: `Pre-diagnosis for case #${caseId} — ${who}`,
+            text: `This analysis took longer than the customer was willing to wait, so their case was filed without it.\n\nIt belongs to case #${caseId}.\n${section}`,
+            html: `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px;line-height:1.55;color:#1c1f22"><p style="margin:0 0 12px">Analysis for <strong>case #${caseId}</strong> (${who}). It took longer than the customer was willing to wait, so the case was filed without it.</p><pre style="white-space:pre-wrap;font-family:inherit;margin:0;padding:12px;background:#f5f7f8;border-radius:8px">${section
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")}</pre></div>`,
+          });
+          console.log(
+            `[support] pre-diagnosis for case #${caseId} ${sent ? "emailed" : "FAILED to send"}`,
+          );
+        };
+
+        // The case already exists and the customer is about to be told so.
+        // Nothing here is allowed to turn that into an error they see.
+        try {
+          after(finish);
+        } catch (e) {
+          console.error(
+            `[support] couldn't schedule the pre-diagnosis for case #${caseId}:`,
+            e instanceof Error ? e.message : e,
+          );
+        }
+      }
+
       // Acknowledgement to the customer. Best-effort, and awaited only so the
       // serverless function isn't torn down mid-flight: the case already
       // exists and the customer has already been told it worked, so an email
