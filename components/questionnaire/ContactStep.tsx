@@ -29,6 +29,7 @@ export function ContactStep({
   tokenReady,
   videoProgress,
   botResetSignal,
+  botRequired,
   onBotUnavailable,
 }: {
   value: Contact | null;
@@ -47,6 +48,8 @@ export function ContactStep({
   videoProgress: number | null;
   /** Bumped after a failed send, to replace the pass that was just spent. */
   botResetSignal: number;
+  /** False when the server isn't checking passes, so none is needed. */
+  botRequired: boolean;
   /** The bot check couldn't run — stop waiting on it. */
   onBotUnavailable: () => void;
 }) {
@@ -55,7 +58,7 @@ export function ContactStep({
   const detailsOk = c.name.trim().length > 0 && isValidEmail(c.email);
   // Submitting before Cloudflare has issued its pass gets a hard rejection from
   // the server, which reads as a broken form on the very last step. Wait for it.
-  const waitingOnCheck = turnstileEnabled() && !tokenReady;
+  const waitingOnCheck = turnstileEnabled() && botRequired && !tokenReady;
   // Sending now would file the case without the video, and the customer would
   // have no idea it was left behind. They're on the last screen anyway, so the
   // remaining seconds cost nothing.
@@ -92,11 +95,13 @@ export function ContactStep({
         .
       </p>
 
-      <TurnstileWidget
-        onToken={onToken}
-        resetSignal={botResetSignal}
-        onUnavailable={onBotUnavailable}
-      />
+      {botRequired && (
+        <TurnstileWidget
+          onToken={onToken}
+          resetSignal={botResetSignal}
+          onUnavailable={onBotUnavailable}
+        />
+      )}
 
       {touched && !detailsOk && (
         <p className="mt-3 text-sm text-danger">

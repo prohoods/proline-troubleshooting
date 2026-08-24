@@ -11,7 +11,10 @@ import { emailConfigured, sendEmail } from "@/lib/email/resend";
 import { buildCaseHandover } from "@/lib/email/caseHandover";
 import { alertSlack } from "@/lib/alerts/slack";
 import { corsPreflight, withCors } from "@/lib/cors";
-import { verifyTurnstile } from "@/lib/security/turnstile";
+import {
+  turnstileConfigured,
+  verifyTurnstile,
+} from "@/lib/security/turnstile";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import type { RunAnswer } from "@/lib/storage/types";
 import type {
@@ -524,8 +527,14 @@ async function handover(
 }
 
 // Health probe — whether the support key is wired (no data, no upstream call).
+//
+// `botCheck` matters to the browser: enforcement needs the secret, which only
+// the server can see, while the widget only knows about the site key. Leave
+// the site key set after removing the secret and the customer waits for a pass
+// nobody will ever check — which is exactly what happened.
 export function GET() {
   return NextResponse.json({
     configured: Boolean(process.env.PROLINE_SUPPORT_API_KEY),
+    botCheck: turnstileConfigured(),
   });
 }

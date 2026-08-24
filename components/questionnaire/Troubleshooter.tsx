@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Diagnosis } from "@/lib/diagnoses/types";
 import { resolveDiagnoses } from "@/lib/diagnoses/resolve";
 import { categories, type Category } from "@/lib/flow";
@@ -116,6 +116,33 @@ export function Troubleshooter({
   // outcome, so let them send: the server still decides, and a rejection at
   // least tells them something.
   const [botGaveUp, setBotGaveUp] = useState(false);
+
+  /**
+   * Whether the server actually checks the pass.
+   *
+   * The widget only knows the site key; enforcement also needs the secret,
+   * which is server-side. With the secret removed but the site key left in
+   * place, the browser would otherwise sit waiting on a pass that nobody is
+   * going to look at. Assume it's enforced until told otherwise, so a slow or
+   * failed answer here never weakens anything.
+   */
+  const [botRequired, setBotRequired] = useState(true);
+
+  useEffect(() => {
+    if (!turnstileEnabled()) return;
+    let cancelled = false;
+    void fetch(apiUrl("/api/support"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { botCheck?: boolean } | null) => {
+        if (!cancelled && j && j.botCheck === false) setBotRequired(false);
+      })
+      .catch(() => {
+        // Unreachable: keep waiting for a pass, which is the safe assumption.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const flow = category?.flow;
   const steps = useMemo(
@@ -594,7 +621,10 @@ export function Troubleshooter({
             effectiveContact?.name.trim() && effectiveContact?.email.trim(),
           )}
           onToken={setBotToken}
-          tokenReady={!turnstileEnabled() || botToken !== null || botGaveUp}
+          tokenReady={
+            !turnstileEnabled() || !botRequired || botToken !== null || botGaveUp
+          }
+          botRequired={botRequired}
           onBotUnavailable={() => setBotGaveUp(true)}
           videoProgress={videoProgress}
           botResetSignal={botResetSignal}
