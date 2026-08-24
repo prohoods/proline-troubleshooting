@@ -8,11 +8,18 @@
  * case to a human.
  */
 
-export const slackConfigured = (): boolean =>
-  Boolean(process.env.SLACK_WEBHOOK_URL);
+/**
+ * Same variable name the analytics dashboard uses for its health-check alerts,
+ * so both apps post to one channel and there is a single place to look when
+ * something breaks. SLACK_WEBHOOK_URL is accepted as a fallback.
+ */
+const webhook = (): string | undefined =>
+  process.env.SLACK_ALERTS_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL;
+
+export const slackConfigured = (): boolean => Boolean(webhook());
 
 export async function alertSlack(text: string): Promise<void> {
-  const url = process.env.SLACK_WEBHOOK_URL;
+  const url = webhook();
   if (!url) return;
   try {
     await fetch(url, {
