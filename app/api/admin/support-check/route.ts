@@ -64,9 +64,14 @@ export async function GET(request: Request) {
 
   const detail = (await res.text().catch(() => "")).slice(0, 300).trim();
 
-  // The key is the thing being tested, so a fingerprint rather than the value:
-  // enough to tell two keys apart when comparing with whoever issued it.
-  const fingerprint = `${key.length} chars, ends "${key.slice(-4)}"`;
+  // A fingerprint rather than the value. Both ends plus the length identify a
+  // key beyond reasonable doubt when checking it against whoever issued it,
+  // which is what gets asked in an outage — without putting a live credential
+  // in an email thread.
+  const fingerprint =
+    key.length >= 12
+      ? `${key.length} chars, starts "${key.slice(0, 6)}", ends "${key.slice(-4)}"`
+      : `${key.length} chars (too short to fingerprint safely)`;
   const clean = key === key.trim();
 
   if (res.status === 401) {
