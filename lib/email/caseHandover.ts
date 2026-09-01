@@ -41,6 +41,7 @@ export function buildCaseHandover(input: HandoverInput): {
   html: string;
   attachments: EmailAttachment[];
   replyTo: string;
+  fromName: string;
 } {
   const heading = input.model
     ? `Troubleshooting request — ${input.model}`
@@ -55,11 +56,12 @@ export function buildCaseHandover(input: HandoverInput): {
   ];
 
   const lines = [
-    "This case could NOT be filed in Stopgap and needs handling by hand.",
+    "The guide couldn't file this through the Stopgap API, so it came in by",
+    "email instead. It still needs a person — nothing has replied to the",
+    "customer yet.",
     `Reason: ${input.reason}`,
     "",
-    "The customer has been told their request was received — so it has to be,",
-    "and a reply to this email goes straight to them.",
+    "Reply to the customer's address below, not to the sender of this message.",
     "",
     ...facts.filter(([, v]) => v?.trim()).map(([k, v]) => `${k}: ${v}`),
     "",
@@ -80,11 +82,11 @@ export function buildCaseHandover(input: HandoverInput): {
 
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px;color:#1c1f22;line-height:1.55">
   <p style="margin:0 0 12px;padding:10px 12px;background:#fdece9;border-left:3px solid #d0342c;">
-    <strong>Not filed in Stopgap — handle this one by hand.</strong><br>
+    <strong>Came in by email, not through the API — still needs a person.</strong><br>
     <span style="color:#6b7177;">${esc(input.reason)}</span>
   </p>
   <p style="margin:0 0 16px;color:#6b7177;">
-    The customer has been told we received it. Replying to this email goes straight to them.
+    The customer has been told we received it. Reply to their address below — not to the sender of this message.
   </p>
   <table style="border-collapse:collapse;margin:0 0 16px;">
     ${facts
@@ -106,9 +108,15 @@ export function buildCaseHandover(input: HandoverInput): {
 </div>`;
 
   return {
-    subject: `[Not in Stopgap] ${heading} — ${input.name}`,
+    // Not "[Not in Stopgap]": support@ feeds Stopgap, so these DO become cases,
+    // just through the inbox rather than the API. Saying otherwise sent people
+    // looking for a problem that wasn't there.
+    subject: `[Filed by email] ${heading} — ${input.name}`,
     text,
     html,
+    // Stopgap raises the case against the From line, so send under the
+    // customer's name — otherwise every one of these is filed against us.
+    fromName: `${input.name} via the troubleshooting guide`,
     attachments: input.images,
     // Reply goes to the customer, not to us: the point is that a person can
     // pick this up and answer without copying anything anywhere.

@@ -23,6 +23,15 @@ export interface SendEmailInput {
   attachments?: EmailAttachment[];
   /** Overrides EMAIL_REPLY_TO — used to point a handover straight at the customer. */
   replyTo?: string;
+  /**
+   * Display name to send under, keeping EMAIL_FROM's address.
+   *
+   * Stopgap builds a case's contact from the From line of an incoming email,
+   * so a handover arrived attributed to "Proline Range Hoods" rather than to
+   * the customer it was about. Only the label changes — the address, and with
+   * it SPF and DKIM, is untouched.
+   */
+  fromName?: string;
 }
 
 /**
@@ -32,8 +41,15 @@ export interface SendEmailInput {
  */
 export async function sendEmail(input: SendEmailInput): Promise<string | null> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!key || !from) return null;
+  const configured = process.env.EMAIL_FROM;
+  if (!key || !configured) return null;
+
+  // EMAIL_FROM is either "Name <addr>" or a bare address; either way the
+  // address is what must survive.
+  const address = configured.match(/<([^>]+)>/)?.[1] ?? configured.trim();
+  const from = input.fromName
+    ? `${input.fromName.replace(/["<>\r\n]/g, "")} <${address}>`
+    : configured;
 
   // Replies to a no-reply address vanish, and on a support email some people
   // will reply anyway. Point them at a monitored inbox.
