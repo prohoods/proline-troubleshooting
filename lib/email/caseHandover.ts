@@ -111,7 +111,13 @@ export function buildCaseHandover(input: HandoverInput): {
     // Not "[Not in Stopgap]": support@ feeds Stopgap, so these DO become cases,
     // just through the inbox rather than the API. Saying otherwise sent people
     // looking for a problem that wasn't there.
-    subject: `[Filed by email] ${heading} — ${input.name}`,
+    // The customer's address goes in the subject deliberately. Stopgap keys a
+    // case's contact off the From ADDRESS, which has to stay on our verified
+    // sending domain — so these cases carry no-reply@ as the contact and
+    // searching by the customer's email finds nothing. Putting it in the
+    // subject at least makes the case findable by the thing an agent actually
+    // has to hand.
+    subject: `[Filed by email] ${heading} — ${input.name} <${input.email}>`,
     text,
     html,
     // Stopgap raises the case against the From line, so send under the
